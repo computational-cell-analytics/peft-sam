@@ -31,8 +31,6 @@ def preprocess_data(dataset):
 
     if dataset == "covid_if":
         for_covid_if(os.path.join(ROOT, "covid_if", "slices"))
-    elif dataset == "mouse-embryo":
-        for_mouse_embryo(os.path.join(ROOT, "mouse-embryo", "slices"))
     elif dataset == "platynereis":
         for_platynereis(os.path.join(ROOT, "platynereis", "slices"), choice="cilia")
     elif dataset == "mitolab":
@@ -195,31 +193,6 @@ def for_platynereis(save_dir, choice="cilia"):
     
             )
 
-def for_mouse_embryo(save_dir):
-    """
-    for validation: 100: slices from all volumes from train
-    for testing: validation volume
-    """
-    mouse_embryo_val_vols = sorted(glob(os.path.join(ROOT, "mouse-embryo", "Membrane", "train", "*.h5")))
-    mouse_embryo_test_vols = sorted(glob(os.path.join(ROOT, "mouse-embryo", "Membrane", "val", "*.h5")))
-    roi_val = np.s_[100:,:,:]
-
-    def save_slices_per_split(all_vols, split):
-        for vol_path in all_vols:
-            vol_id = Path(vol_path).stem
-
-            from_h5_to_tif(
-                h5_vol_path=vol_path,
-                raw_key="raw",
-                raw_dir=os.path.join(save_dir, split, "raw"),
-                labels_key="label",
-                labels_dir=os.path.join(save_dir, split, "labels"),
-                slice_prefix_name=f"mouse_embryo_{split}_{vol_id}",
-                roi_slices=roi_val if split == "val" else None,
-            )
-
-    save_slices_per_split(mouse_embryo_val_vols, "val")
-    save_slices_per_split(mouse_embryo_test_vols, "test")
 
 
 def for_mitolab(save_path):
@@ -380,21 +353,15 @@ def for_gonuclear(save_path):
 def download_all_datasets(path):
     datasets.get_platynereis_cilia_dataset(os.path.join(path, "platynereis"), patch_shape=(1, 512, 512), download=True)
     datasets.get_covid_if_dataset(os.path.join(path, "covid_if"), patch_shape=(1, 512, 512), download=True)
-    datasets.get_mouse_embryo_dataset(
-        os.path.join(path, "mouse-embryo"), name="membrane", split="train", patch_shape=(1, 512, 512), download=True
-    )
-    datasets.get_mouse_embryo_dataset(
-        os.path.join(path, "mouse-embryo"), name="membrane", split="val", patch_shape=(1, 512, 512), download=True
-    )
     datasets.get_orgasegment_dataset(os.path.join(path, "orgasegment"), split="val", patch_shape=(512,512), download=True)
     datasets.get_orgasegment_dataset(os.path.join(path, "orgasegment"), split="eval", patch_shape=(512,512), download=True)
+    datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512), segmentation_task="nuclei", download=True)
 
 def main():
 
     download_all_datasets(ROOT)
 
     preprocess_data("covid_if")
-    preprocess_data("mouse-embryo")
     preprocess_data("platynereis")
     preprocess_data("mitolab")
     preprocess_data("orgasegment")

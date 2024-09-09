@@ -22,35 +22,18 @@ VANILLA_MODELS = {
 
 
 FILE_SPECS = {
-    "lucchi": {"val": "lucchi_train_*", "test": "lucchi_test_*"},
-    "nuc_mm/mouse": {"val": "nuc_mm_val_*", "test": "nuc_mm_train_*"},
-    "nuc_mm/zebrafish": {"val": "nuc_mm_val_*", "test": "nuc_mm_train_*"},
     "platynereis/cilia": {"val": "platy_cilia_val_*", "test": "platy_cilia_test_*"},
-    "platynereis/nuclei": {"val": "platy_nuclei_val_*", "test": "platy_nuclei_test_*"},
-    "platynereis/cells": {"val": "platy_cells_val_*", "test": "platy_cells_test_*"},
-    "cremi": {"val": "cremi_val_*", "test": "cremi_test_*"}
 }
 
 # good spot to track all datasets we use atm
 DATASETS = [
     # in-domain (LM)
-    "tissuenet/one_chan", "tissuenet/multi_chan", "deepbacs", "plantseg/root", "livecell",
-    "neurips-cell-seg/all", "neurips-cell-seg/tuning", "neurips-cell-seg/self",
+    "livecell",
     # out-of-domain (LM)
-    "covid_if", "plantseg/ovules", "hpa", "lizard", "mouse-embryo", "ctc/hela_samples", "dynamicnuclearnet",
-      "pannuke", "orgasegment", "gonuclear",
+    "covid_if", "orgasegment", "gonuclear",
     # organelles (EM)
-    #   - in-domain
-    "mitoem/rat", "mitoem/human", "platynereis/nuclei",
     #   - out-of-domain
-    "mitolab/c_elegans", "mitolab/fly_brain", "mitolab/glycolytic_muscle", "mitolab/hela_cell",
-    "mitolab/lucchi_pp", "mitolab/salivary_gland", "mitolab/tem", "lucchi", "nuc_mm/mouse",
-    "nuc_mm/zebrafish", "uro_cell", "sponge_em", "platynereis/cilia", "vnc", "asem/mito", "asem/er",
-    # boundaries - EM
-    #   - in-domain
-    "cremi", "platynereis/cells",
-    #   - out-of-domain
-    "axondeepseg", "snemi", "isbi",
+    "mitolab/glycolytic_muscle", "platynereis/cilia"
 ]
 
 
@@ -108,108 +91,21 @@ def get_pred_paths(prediction_folder):
 
 
 def download_all_datasets(path):
-    # lucchi
-    datasets.get_lucchi_dataset(os.path.join(path, "lucchi"), split="train", patch_shape=(1, 512, 512), download=True)
-    datasets.get_lucchi_dataset(os.path.join(path, "lucchi"), split="test", patch_shape=(1, 512, 512), download=True)
-
-    # snemi
-    datasets.get_snemi_dataset(os.path.join(path, "snemi"), patch_shape=(1, 512, 512), sample="train", download=True)
-    try:
-        datasets.get_snemi_dataset(os.path.join(path, "snemi"), patch_shape=(1, 512, 512), sample="test", download=True)
-    except KeyError:
-        warnings.warn("SNEMI's test set does not have labels. We download it in one place anyways.")
-
-    # nuc_mm
-    datasets.get_nuc_mm_dataset(
-        os.path.join(path, "nuc_mm"), sample="mouse", split="train", patch_shape=(1, 192, 192), download=True
-    )
-    datasets.get_nuc_mm_dataset(
-        os.path.join(path, "nuc_mm"), sample="zebrafish", split="train", patch_shape=(1, 64, 64), download=True
-    )
 
     # platy-cilia
     datasets.get_platynereis_cilia_dataset(os.path.join(path, "platynereis"), patch_shape=(1, 512, 512), download=True)
-    datasets.get_platynereis_nuclei_dataset(os.path.join(path, "platynereis"), patch_shape=(1, 512, 512), download=True)
-    datasets.get_platynereis_cell_dataset(os.path.join(path, "platynereis"), patch_shape=(1, 512, 512), download=True)
-
-    # mitoem
-    datasets.get_mitoem_dataset(
-        os.path.join(path, "mitoem"), splits="val", patch_shape=(1, 512, 512), download=True
-    )
 
     # mitolab
     print("MitoLab benchmark datasets need to downloaded separately. See `datasets.cem.get_benchmark_datasets`")
 
-    # uro-cell
-    datasets.get_uro_cell_dataset(
-        os.path.join(path, "uro_cell"), target="mito", patch_shape=(1, 512, 512), download=True
-    )
-
-    # sponge-em
-    datasets.get_sponge_em_dataset(
-        os.path.join(path, "sponge_em"), mode="instances", patch_shape=(1, 512, 512), download=True
-    )
-
-    # isbi
-    datasets.get_isbi_dataset(os.path.join(path, "isbi"), patch_shape=(1, 512, 512), download=True)
-
-    # axondeepseg
-    datasets.get_axondeepseg_dataset(
-        os.path.join(path, "axondeepseg"), name="tem", patch_shape=(1, 512, 512), download=True
-    )
-
-    # cremi
-    datasets.get_cremi_dataset(os.path.join(path, "cremi"), patch_shape=(1, 512, 512), download=True)
-
     # covid-if
     datasets.get_covid_if_dataset(os.path.join(path, "covid_if"), patch_shape=(1, 512, 512), download=True)
 
-    # tissuenet: data cannot be downloaded automatically. please download from here - https://datasets.deepcell.org/data
+    # orgasegment
+    datasets.get_orgasegment_dataset(os.path.join(path, "orgasegment"), patch_shape=(1, 512, 512), download=True)
 
-    # deepbacs
-    datasets.get_deepbacs_dataset(os.path.join(path, "deepbacs"), split="train", patch_shape=(256, 256), download=True)
-    datasets.get_deepbacs_dataset(os.path.join(path, "deepbacs"), split="val", patch_shape=(256, 256), download=True)
-    datasets.get_deepbacs_dataset(os.path.join(path, "deepbacs"), split="test", patch_shape=(256, 256), download=True)
-
-    # plantseg root
-    datasets.get_plantseg_dataset(
-        os.path.join(path, "plantseg"), name="root", split="train", patch_shape=(1, 512, 512), download=True
-    )
-    datasets.get_plantseg_dataset(
-        os.path.join(path, "plantseg"), name="root", split="val", patch_shape=(1, 512, 512), download=True
-    )
-    datasets.get_plantseg_dataset(
-        os.path.join(path, "plantseg"), name="root", split="test", patch_shape=(1, 512, 512), download=True
-    )
-
-    # hpa
-    datasets.get_hpa_segmentation_dataset(
-        os.path.join(path, "hpa"), split="train", patch_shape=(512, 512), download=True
-    )
-    datasets.get_hpa_segmentation_dataset(
-        os.path.join(path, "hpa"), split="val", patch_shape=(512, 512), download=True
-    )
-
-    # lizard: see `torch_em.data.datasets.get_lizard_dataset` for details to download the dataset
-
-    # mouse embryo
-    datasets.get_mouse_embryo_dataset(
-        os.path.join(path, "mouse-embryo"), name="nuclei", split="train", patch_shape=(1, 512, 512), download=True
-    )
-    datasets.get_mouse_embryo_dataset(
-        os.path.join(path, "mouse-embryo"), name="nuclei", split="val", patch_shape=(1, 512, 512), download=True
-    )
-
-    # plantseg ovules
-    datasets.get_plantseg_dataset(
-        os.path.join(path, "plantseg"), name="ovules", split="train", patch_shape=(1, 512, 512), download=True
-    )
-    datasets.get_plantseg_dataset(
-        os.path.join(path, "plantseg"), name="ovules", split="val", patch_shape=(1, 512, 512), download=True
-    )
-    datasets.get_plantseg_dataset(
-        os.path.join(path, "plantseg"), name="ovules", split="test", patch_shape=(1, 512, 512), download=True
-    )
+    # gonuclear
+    datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512), download=True)
 
 #
 # PARSER FOR ALL THE REQUIRED ARGUMENTS
