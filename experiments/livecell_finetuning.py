@@ -40,7 +40,7 @@ def get_dataloaders(patch_shape, data_path, cell_type=None):
 
 
 def finetune_livecell(args):
-    """Code for finetuning SAM (using LoRA) on LIVECell
+    """Code for finetuning SAM (using PEFT methods) on LIVECell
     """
     # override this (below) if you have some more complex set-up and need to specify the exact gpu
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -51,12 +51,30 @@ def finetune_livecell(args):
     patch_shape = (520, 704)  # the patch shape for training
     n_objects_per_batch = args.n_objects  # this is the number of objects per batch that will be sampled
     freeze_parts = args.freeze  # override this to freeze different parts of the model
-    checkpoint_name = f"{args.model_type}/livecell_sam"
+
+    # specify checkpoint path depending on the type of finetuning
+    if args.peft_method is not None:
+        checkpoint_name = f"{args.model_type}/{args.peft_method}/livecell_sam"
+    elif freeze_parts is not None:
+        checkpoint_name = f"{args.model_type}/frozen_encoder/livecell_sam"
+    else:
+        checkpoint_name = f"{args.model_type}/full_ft/livecell_sam"
 
     # all the stuff we need for training
     train_loader, val_loader = get_dataloaders(patch_shape=patch_shape, data_path=args.input_path)
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
+
+    # arguments for peft
+    if args.peft_method is not None:
+        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
+        if args.peft_method == "lora":
+            peft_kwargs = {"rank": args.peft_rank, "peft_module": LoRASurgery}
+        elif args.peft_method == "fact":
+            peft_kwargs = {"rank": args.peft_rank, "peft_module": FacTSurgery}    
+    else: 
+        peft_kwargs = None
+        #peft_kwargs = {"rank": None, "peft_module": None}
 
     # Run training.
     sam_training.train_sam(
@@ -74,7 +92,7 @@ def finetune_livecell(args):
         save_root=args.save_root,
         scheduler_kwargs=scheduler_kwargs,
         optimizer_class=optimizer_class,
-        lora_rank=args.lora_rank,
+        peft_kwargs=peft_kwargs
     )
 
     if args.export_path is not None:
@@ -101,8 +119,8 @@ def main():
         help="Where to save the checkpoint and logs. By default they will be saved where this script is run."
     )
     parser.add_argument(
-        "--iterations", type=int, default=int(1e4),
-        help="For how many iterations should the model be trained? By default 100k."
+        "--iterations", type=int, default=int(5e4),
+        help="For how many iterations should the model be trained? By default 50k."
     )
     parser.add_argument(
         "--export_path", "-e",
@@ -116,7 +134,10 @@ def main():
         "--n_objects", type=int, default=25, help="The number of instances (objects) per batch used for finetuning."
     )
     parser.add_argument(
-        "--lora_rank", type=int, default=None, help="The rank for low rank adaptation of attention layers."
+        "--peft_rank", type=int, default=None, help="The rank for peft training."
+    )
+    parser.add_argument(
+        "--peft_method", type=str, default=None, help="The method to use for PEFT. Either 'lora' or 'fact'."
     )
     args = parser.parse_args()
     finetune_livecell(args)
