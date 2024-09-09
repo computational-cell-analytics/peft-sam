@@ -4,7 +4,7 @@ from micro_sam.evaluation import inference
 from micro_sam.evaluation.evaluation import run_evaluation_for_iterative_prompting
 
 from util import get_paths  # comment this and create a custom function with the same name to run int. seg. on your data
-from util import get_model, get_default_arguments
+from util import get_default_arguments
 from micro_sam.util import get_sam_model
 
 
@@ -43,8 +43,10 @@ def main():
     start_with_box_prompt = args.box  # overwrite to start first iters' prompt with box instead of single point
 
     # get the predictor to perform inference
-    predictor = get_model(model_type=args.model, ckpt=args.checkpoint, lora_rank=args.lora_rank)
-
+    peft_kwargs = {"rank": args.peft_rank, "peft_module": args.peft_module}
+    predictor = get_sam_model(
+        model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs,
+    )
     prediction_root = _run_iterative_prompting(
         args.dataset, args.experiment_folder, predictor, start_with_box_prompt, args.use_masks
     )
