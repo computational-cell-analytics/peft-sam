@@ -3,19 +3,14 @@ import argparse
 
 import torch
 
-from get_data_loaders import _fetch_loaders
+from peft_sam.get_data_loaders import _fetch_loaders
 import micro_sam.training as sam_training
 from micro_sam.util import export_custom_sam_model
-
-
-def count_parameters(model):
-    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    params = params / 1e6
-    return f"The number of trainable parameters for the provided model is {round(params, 2)}M"
+from micro_sam.models.peft_sam import FacTSurgery
 
 
 def finetune(args):
-    """Code for finetuning SAM (using LoRA)
+    """Code for finetuning SAM (using FacT)
     """
     # override this (below) if you have some more complex set-up and need to specify the exact gpu
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -25,8 +20,8 @@ def finetune(args):
     checkpoint_path = None  # override this to start training from a custom checkpoint
     n_objects_per_batch = args.n_objects  # this is the number of objects per batch that will be sampled
     freeze_parts = args.freeze  # override this to freeze different parts of the model
-    lora_rank = args.lora_rank  # the rank for low rank adaptation
-    checkpoint_ending = f"lora_{lora_rank}" if lora_rank is not None else "full_ft"
+    fact_rank = args.fact_rank  # the rank for low rank adaptation
+    checkpoint_ending = f"fact_{fact_rank}" if fact_rank is not None else "full_ft"
     dataset = args.dataset
 
     checkpoint_name = f"{args.model_type}/{dataset}_{checkpoint_ending}"
@@ -35,6 +30,8 @@ def finetune(args):
     train_loader, val_loader = _fetch_loaders(dataset, args.input_path)
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
+
+    peft_kwargs = {"rank": fact_rank, "peft_module": FacTSurgery}
 
     # Run training.
     sam_training.train_sam(
@@ -52,7 +49,7 @@ def finetune(args):
         save_root=args.save_root,
         scheduler_kwargs=scheduler_kwargs,
         optimizer_class=optimizer_class,
-        lora_rank=lora_rank,
+        peft_kwargs=peft_kwargs,
     )
 
     if args.export_path is not None:
@@ -86,11 +83,11 @@ def main():
         "--n_objects", type=int, default=25, help="The number of instances (objects) per batch used for finetuning."
     )
     parser.add_argument(
-        "--lora_rank", type=int, default=None, help="The rank for low rank adaptation."
+        "--fact_rank", type=int, default=None, help="The rank for factor tuning."
     )
     parser.add_argument(
         "--dataset", "-d", type=str, required=True,
-        help="The dataset to use for training. Chose from 'covid_if', 'orgasegment, 'mouse-embryo', 'mitolab_glycolytic_muscle', 'platy_cylia', 'gonuclear."
+        help="The dataset to use for training. Chose from 'livecell', 'covid_if', 'orgasegment', 'mitolab_glycolytic_muscle', 'platy_cylia', 'gonuclear."
     )
     parser.add_argument(
         "--input_path", "-i", type=str, default="/scratch/usr/nimcarot/data",
