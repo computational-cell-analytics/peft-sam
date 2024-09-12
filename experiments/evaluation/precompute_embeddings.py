@@ -9,8 +9,10 @@ from micro_sam.util import get_sam_model
 
 def main():
     args = get_default_arguments()
-
-    peft_kwargs = {"rank": args.peft_rank, "peft_module": args.peft_module}
+    if args.peft_module is None:
+        peft_kwargs = None
+    else:
+        peft_kwargs = {"rank": args.peft_rank, "peft_module": args.peft_module}
     predictor = get_sam_model(
         model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs,
     )
