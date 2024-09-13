@@ -38,8 +38,13 @@ def main():
     if args.peft_module is None:
         peft_kwargs = None
     else:
-        peft_kwargs = {"rank": args.peft_rank, "peft_module": args.peft_module}
-
+        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
+        if args.peft_module == 'LoRASurgery':
+            module = LoRASurgery
+        elif args.peft_module == 'FacTSurgery':
+            module = FacTSurgery
+        peft_kwargs = {"rank": args.peft_rank, "peft_module": module}
+        
     prediction_folder = run_instance_segmentation_with_decoder_inference(
         args.dataset, args.model, args.checkpoint, args.experiment_folder, peft_kwargs,
     )

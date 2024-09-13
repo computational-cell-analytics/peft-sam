@@ -33,10 +33,17 @@ def eval_amg(dataset_name, prediction_folder, experiment_folder):
 
 def main():
     args = get_default_arguments()
+
     if args.peft_module is None:
         peft_kwargs = None
     else:
-        peft_kwargs = {"rank": args.peft_rank, "peft_module": args.peft_module}
+        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
+        if args.peft_module == 'LoRASurgery':
+            module = LoRASurgery
+        elif args.peft_module == 'FacTSurgery':
+            module = FacTSurgery
+        peft_kwargs = {"rank": args.peft_rank, "peft_module": module}
+
     prediction_folder = run_amg_inference(args.dataset, args.model, args.checkpoint, args.experiment_folder, 
                                           peft_kwargs)
     eval_amg(args.dataset, prediction_folder, args.experiment_folder)
