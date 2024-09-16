@@ -10,7 +10,7 @@ from micro_sam.models.peft_sam import FacTSurgery
 
 
 def finetune(args):
-    """Code for finetuning SAM (using FacT)
+    """Code for finetuning SAM (using PEFT methods) on different data
     """
     # override this (below) if you have some more complex set-up and need to specify the exact gpu
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -20,18 +20,32 @@ def finetune(args):
     checkpoint_path = None  # override this to start training from a custom checkpoint
     n_objects_per_batch = args.n_objects  # this is the number of objects per batch that will be sampled
     freeze_parts = args.freeze  # override this to freeze different parts of the model
-    fact_rank = args.fact_rank  # the rank for low rank adaptation
-    checkpoint_ending = f"fact_{fact_rank}" if fact_rank is not None else "full_ft"
     dataset = args.dataset
 
-    checkpoint_name = f"{args.model_type}/{dataset}_{checkpoint_ending}"
+    # specify checkpoint path depending on the type of finetuning
+    if args.peft_method is not None:
+        checkpoint_name = f"{args.model_type}/{args.peft_method}/{dataset}_sam"
+    elif freeze_parts is not None:
+        checkpoint_name = f"{args.model_type}/frozen_encoder/{dataset}_sam"
+    else:
+        checkpoint_name = f"{args.model_type}/full_ft/{dataset}_sam"
+
 
     # all the stuff we need for training
     train_loader, val_loader = _fetch_loaders(dataset, args.input_path)
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
-    peft_kwargs = {"rank": fact_rank, "peft_module": FacTSurgery}
+    if args.peft_method is not None:
+        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
+        if args.peft_method == "lora":
+            peft_kwargs = {"rank": args.peft_rank, "peft_module": LoRASurgery}
+        elif args.peft_method == "fact":
+            peft_kwargs = {"rank": args.peft_rank, "peft_module": FacTSurgery}    
+    else: 
+        peft_kwargs = None
+
+
 
     # Run training.
     sam_training.train_sam(
@@ -83,15 +97,18 @@ def main():
         "--n_objects", type=int, default=25, help="The number of instances (objects) per batch used for finetuning."
     )
     parser.add_argument(
-        "--fact_rank", type=int, default=None, help="The rank for factor tuning."
-    )
-    parser.add_argument(
         "--dataset", "-d", type=str, required=True,
         help="The dataset to use for training. Chose from 'livecell', 'covid_if', 'orgasegment', 'mitolab_glycolytic_muscle', 'platy_cylia', 'gonuclear."
     )
     parser.add_argument(
         "--input_path", "-i", type=str, default="/scratch/usr/nimcarot/data",
         help="Specifies the path to the data directory (should be set to /usr/name/data if dataset is at /usr/name/data/dataset_name)"
+    )
+    parser.add_argument(
+        "--peft_rank", type=int, default=None, help="The rank for peft training."
+    )
+    parser.add_argument(
+        "--peft_method", type=str, default=None, help="The method to use for PEFT. Either 'lora' or 'fact'."
     )
     args = parser.parse_args()
     finetune(args)

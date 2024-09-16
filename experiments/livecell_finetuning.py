@@ -74,7 +74,6 @@ def finetune_livecell(args):
             peft_kwargs = {"rank": args.peft_rank, "peft_module": FacTSurgery}    
     else: 
         peft_kwargs = None
-        #peft_kwargs = {"rank": None, "peft_module": None}
 
     # Run training.
     sam_training.train_sam(
