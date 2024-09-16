@@ -57,7 +57,7 @@ conda activate {env_name} \n"""
     if peft_rank is not None:
         python_script += f"--peft_rank {peft_rank} "
     if peft_method is not None:
-        python_script += f"--peft_method {peft_method} "
+        python_script += f"--peft_module {peft_method} "
 
     # let's add the python script to the bash script
     batch_script += python_script
@@ -94,7 +94,7 @@ def submit_slurm():
     make_delay = "10s"  # wait for precomputing the embeddings and later run inference scripts
 
  
-    all_checkpoints = glob(os.path.join(EXPERIMENT_ROOT, "checkpoints", "**", "best.pt"))
+    all_checkpoints = glob(os.path.join(EXPERIMENT_ROOT, "checkpoints", "**", "best.pt"), recursive=True)
     model_type = "vit_b"
 
     for checkpoint_path in all_checkpoints:
@@ -109,21 +109,19 @@ def submit_slurm():
             peft_method = 'LoRASurgery'
         elif finetuning_method == 'fact':
             peft_rank = 4
-            peft_method = 'FactSurgery'
+            peft_method = 'FacTSurgery'
         else:
-            peft_rank = None
             peft_method = None
-        
+            peft_rank = None
 
         for current_setup in ALL_SCRIPTS:
             write_batch_script(
                 env_name="sam",
                 out_path=get_batch_script_names(tmp_folder),
                 inference_setup=current_setup,
-                checkpoint=None,
+                checkpoint=checkpoint_path,
                 model_type=model_type,
                 experiment_folder=result_path,
-                dataset_name="livecell",
                 delay=None if current_setup == "precompute_embeddings" else make_delay,
                 peft_rank=peft_rank,
                 peft_method=peft_method

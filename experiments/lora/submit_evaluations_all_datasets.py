@@ -113,7 +113,7 @@ def get_checkpoint_path(experiment_set, dataset_name, model_type, region):
 
         checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model_type}/{dataset_name}_{experiment}/best.pt"
 
-    elif experiment_set = "vanilla":
+    elif experiment_set == "vanilla":
         checkpoint = None
     else:
         raise ValueError("Choose from generalist / vanilla")
@@ -137,7 +137,6 @@ def submit_slurm(model_type="vit_b"):
 
     for dataset_name in ALL_DATASETS:
         preprocess_data(dataset_name)
-        
         for experiment_set in ["vanilla", "generalist", "specialist_full_ft", "specialist_lora"]:
 
             # set the rank if finetuned with lora
@@ -175,7 +174,7 @@ def submit_slurm(model_type="vit_b"):
                     out_path=get_batch_script_names(tmp_folder),
                     inference_setup=current_setup,
                     checkpoint=checkpoint,
-                    model_type=model_type,
+                    model_type=model_type_roi,
                     experiment_folder=experiment_folder,
                     dataset_name=dataset_name,
                     delay=None if current_setup == "precompute_embeddings" else make_delay,
