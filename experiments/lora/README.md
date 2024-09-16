@@ -8,7 +8,8 @@
 **platynereis/cilia**: Dataset for the segmentation of cilia in the platynereis larve. 
 
 ## Comparing LoRA with Full Finetuning
-On all 5 datasets the SAM model is trained from default and from the micro-sam models using LoRA and full finetuning. 
+On all 5 datasets the SAM model is trained from default and from the micro-sam models using LoRA and full finetuning.  
+Note that all datasets except GuNuclear are trained with early stopping while GoNuclear is trained for 50k iterations.
 
 ### Orgasegment
 
@@ -49,6 +50,15 @@ On all 5 datasets the SAM model is trained from default and from the micro-sam m
 | vanilla            | - | 0.0529358 |     0.388909 |      0.0424461 |                      0.29122  |                       0.0958208 |
 
 
+
+# GoNuclear 
+
+|                    |        ais |       amg |   single box |   single point |   iterative_prompts_start_box |   iterative_prompts_start_point |
+|:-------------------|-----------:|----------:|-------------:|---------------:|------------------------------:|--------------------------------:|
+| generalist         |    0.0890959 | 0.033125|    0.686063 |      0.167951|                      0.764031  |                       0.686301  |
+| specialist_full_ft |   0.105786 | 0.030567   |    0.719985 |      0.244551  |                      0.744716 |                       0.653932  |
+| specialist_lora    |   0.204244 |  0.043957 |     0.673355 |     0.268546 |                      0.756035 |                       0.684994  |
+| vanilla            | - | -|     0.498223|      0.362247|                      0.439616|                       0.318307 |
 
 
 ## Extended Rank Study on Mitolab Glycolytic Muscle
