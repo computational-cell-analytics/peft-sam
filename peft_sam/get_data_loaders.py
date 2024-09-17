@@ -95,47 +95,6 @@ def _fetch_loaders(dataset_name, data_root):
             sampler=MinInstanceSampler()
         )
 
-    elif dataset_name == "mouse-embryo":
-        # 3. Mouse Embryo
-        # the logic used here is: I use the first 100 slices per volume from the training split for training
-        # and the next ~20/30 slices per volume from the training split for validation
-        # and we use the whole volume from the val set for testing
-        train_rois = [np.s_[0:100, :, :], np.s_[0:100, :, :], np.s_[0:100, :, :], np.s_[0:100, :, :]]
-        val_rois = [np.s_[100:, :, :], np.s_[100:, :, :], np.s_[100:, :, :], np.s_[100:, :, :]]
-
-        raw_transform = RawTrafo((1,512,512), do_rescaling=True)
-        label_transform = LabelTrafo((512,512))
-
-        train_loader = light_microscopy.get_mouse_embryo_loader(
-            path=os.path.join(data_root, "mouse-embryo"),
-            name="membrane",
-            split="train",
-            patch_shape=(1, 512, 512),
-            batch_size=2,
-            download=True,
-            num_workers=16,
-            shuffle=True,
-            sampler=MinInstanceSampler(min_num_instances=3),
-            rois=train_rois,
-            raw_transform=raw_transform,
-            label_transform=label_transform,
-            ndim=2
-        )
-        val_loader = light_microscopy.get_mouse_embryo_loader(
-            path=os.path.join(data_root, "mouse-embryo"),
-            name="membrane",
-            split="train",
-            patch_shape=(1, 512, 512),
-            batch_size=1,
-            download=True,
-            num_workers=16,
-            sampler=MinInstanceSampler(min_num_instances=3),
-            rois=val_rois,
-            raw_transform=raw_transform,
-            label_transform=label_transform,
-            ndim=2
-        )
-
     elif dataset_name == "mitolab_glycolytic_muscle":
         # 4. This dataset would need aspera-cli to be installed, I'll provide you with this data
         # ...

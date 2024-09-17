@@ -4,7 +4,7 @@ from micro_sam.evaluation.evaluation import run_evaluation
 from micro_sam.evaluation.inference import run_instance_segmentation_with_decoder
 
 from util import get_paths  # comment this and create a custom function with the same name to run ais on your data
-from util import get_pred_paths, get_default_arguments
+from util import get_pred_paths, get_default_arguments, get_peft_kwargs
 
 
 def run_instance_segmentation_with_decoder_inference(
@@ -35,16 +35,9 @@ def eval_instance_segmentation_with_decoder(dataset_name, prediction_folder, exp
 
 def main():
     args = get_default_arguments()
-    if args.peft_module is None:
-        peft_kwargs = None
-    else:
-        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
-        if args.peft_module == 'LoRASurgery':
-            module = LoRASurgery
-        elif args.peft_module == 'FacTSurgery':
-            module = FacTSurgery
-        peft_kwargs = {"rank": args.peft_rank, "peft_module": module}
-        
+
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module)
+
     prediction_folder = run_instance_segmentation_with_decoder_inference(
         args.dataset, args.model, args.checkpoint, args.experiment_folder, peft_kwargs,
     )

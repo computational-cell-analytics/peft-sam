@@ -3,21 +3,15 @@ import os
 from micro_sam.evaluation import precompute_all_embeddings
 
 from util import get_paths  # comment this and create a custom function with the same name to execute on your data
-from util import get_default_arguments
+from util import get_default_arguments, get_peft_kwargs
 from micro_sam.util import get_sam_model
 
 
 def main():
     args = get_default_arguments()
-    if args.peft_module is None:
-        peft_kwargs = None
-    else:
-        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
-        if args.peft_module == 'LoRASurgery':
-            module = LoRASurgery
-        elif args.peft_module == 'FacTSurgery':
-            module = FacTSurgery
-        peft_kwargs = {"rank": args.peft_rank, "peft_module": module}
+
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module)
+
     predictor = get_sam_model(
         model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs,
     )
