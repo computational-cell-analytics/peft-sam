@@ -4,9 +4,11 @@ import subprocess
 from datetime import datetime
 
 
+ALL_DATASETS = {'covid_if':'lm', 'orgasegment':'lm', 'gonuclear':'lm', 'mitolab_glycolytic_muscle':'em_organelles', 'platy_cilia':'em_organelles'}
 
-def write_batch_sript(
-    env_name, save_root, model_type, script_name, checkpoint_path, lora_rank, dataset
+
+def write_batch_script(
+    env_name, save_root, model_type, script_name, checkpoint_path, peft_rank, peft_method, dataset
 ):
     assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
 
@@ -18,12 +20,12 @@ def write_batch_sript(
 #SBATCH -p grete:shared
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
-#SBATCH -A nim00007
+#SBATCH -A nimcarot
 #SBATCH --constraint=80gb
 source activate {env_name}
 """
 
-    python_script = "python lora_finetuning.py "
+    python_script = "python ../finetuning.py "
 
     # add parameters to the python script
     python_script += f"-m {model_type} "  # choice of vit
@@ -35,8 +37,10 @@ source activate {env_name}
     if save_root is not None:
         python_script += f"-s {save_root} "  # path to save model checkpoints and logs
 
-    if lora_rank is not None:
-        python_script += f"--lora_rank {lora_rank} "
+    if peft_rank is not None:
+        python_script += f"--peft_rank {peft_rank} "
+    if peft_method is not None:
+        python_script += f"--peft_method {peft_method} "
     # let's add the python script to the bash script
     batch_script += python_script
     print(batch_script)
@@ -60,26 +64,71 @@ def get_batch_script_names(tmp_folder):
     return batch_script
 
 
-def main(args):
-    tmp_folder = "./gpu_jobs"
-    model_type = args.model_type
+def run_rank_study():
+    """
+    Submit the finetuning jobs for a rank study on mito-lab and orgasegment datasets
+    - from generalist and from default SAM
+    - for ranks 1, 2, 4, 8, 16, 32, 64
+    """
 
-    datasets = ["covid_if", "orgasegment", "gonuclear", "mitolab_glycolytic_muscle", "platy_cilia"]
+    ranks = [None, 1, 2, 4, 8, 16, 32, 64]
+    for rank in ranks:
+        for dataset in ["mitolab_glycolytic_muscle", "orgasegment"]:
+            region = ALL_DATASETS[dataset]
+            generalist_model = f"vit_b_{region}"
+            for base_model in ["vit_b", generalist_model]:
+                script_name = get_batch_script_names("./gpu_jobs")
+                peft_method = "lora" if rank is not None else None
+                write_batch_script(
+                    env_name="sam",
+                    save_root=args.save_root,
+                    model_type=base_model,
+                    script_name=script_name,
+                    checkpoint_path=None,
+                    peft_rank=rank,
+                    peft_method=peft_method,
+                    dataset=dataset,
+                )
 
-    
-    for data in datasets:
-        for lora_rank in [None, 4]:
-            roi = "em_organelles" if data in ["mitolab_glycolytic_muscle", "platy_cilia"] else "lm"
-            generalist_model = f"{args.model_type}_{roi}"
-            write_batch_sript(
-                env_name="mobilesam" if model_type[:5] == "vit_t" else "sam",
+
+
+def run_all_dataset_ft():
+    """
+    Submit the finetuning jobs for all datasets
+    - from generalist full finetuning
+    - from generalist lora
+    """
+
+    for dataset, region in ALL_DATASETS.items():
+        for rank in [None, 4]:
+            generalist_model = f"vit_b_{region}"
+            script_name = get_batch_script_names("./gpu_jobs")
+            peft_method = "lora" if rank is not None else None
+            write_batch_script(
+                env_name="sam",
                 save_root=args.save_root,
                 model_type=generalist_model,
-                script_name=get_batch_script_names(tmp_folder),
+                script_name=script_name,
                 checkpoint_path=None,
-                lora_rank=lora_rank,
-                dataset=data
+                peft_rank=rank,
+                peft_method=peft_method,
+                dataset=dataset,
             )
+
+
+def main(args):
+
+    switch = {
+        'ft_all_data': run_all_dataset_ft,
+        'rank_study': run_rank_study
+    }
+
+    # Get the corresponding experiment function based on the argument and execute it
+    experiment_function = switch.get(args.experiment)
+    
+    # Run the selected experiment
+    experiment_function()
+
 
 if __name__ == "__main__":
     try:
@@ -89,8 +138,13 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model_type", type=str, default="vit_b", help="Choice of image encoder in SAM")
     parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
+    parser.add_argument(
+        '--experiment', 
+        choices=['ft_all_data', 'rank_study'], 
+        required=True, 
+        help="Specify which experiment to run"
+    )
 
     args = parser.parse_args()
     main(args)

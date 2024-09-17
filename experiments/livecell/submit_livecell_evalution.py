@@ -98,18 +98,17 @@ def submit_slurm():
     model_type = "vit_b"
 
     for checkpoint_path in all_checkpoints:
+        # the checkpoints all have the format checkpoints/<model_type>/<training_modality>/<dataset_name>_sam/best.pt
         finetuning_method = checkpoint_path.split("/")[-3]
 
-        result_path = os.path.join(EXPERIMENT_ROOT, finetuning_method, "vit_b")
+        result_path = os.path.join(EXPERIMENT_ROOT, finetuning_method, "lm", "livecell", "vit_b")
         os.makedirs(result_path, exist_ok=True)
 
-        # set the peft rank
-        if finetuning_method == 'lora':
-            peft_rank = 4
-            peft_method = 'LoRASurgery'
-        elif finetuning_method == 'fact':
-            peft_rank = 4
-            peft_method = 'FacTSurgery'
+        # set the peft rank and method
+        # if peft is used the training modality has format <peft_method>_<rank>
+        if 'lora' in finetuning_method or 'fact' in finetuning_method:
+            peft_rank = finetuning_method.split("_")[-1]
+            peft_method = finetuning_method.split("_")[0]
         else:
             peft_method = None
             peft_rank = None

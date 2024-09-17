@@ -24,7 +24,7 @@ def finetune(args):
 
     # specify checkpoint path depending on the type of finetuning
     if args.peft_method is not None:
-        checkpoint_name = f"{args.model_type}/{args.peft_method}/{dataset}_sam"
+        checkpoint_name = f"{args.model_type}/{args.peft_method}_{args.peft_rank}/{dataset}_sam"
     elif freeze_parts is not None:
         checkpoint_name = f"{args.model_type}/frozen_encoder/{dataset}_sam"
     else:

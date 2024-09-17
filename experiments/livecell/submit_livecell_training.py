@@ -18,12 +18,12 @@ def write_batch_script(
 #SBATCH -p grete:shared
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
-#SBATCH -A nim00007
+#SBATCH -A nimcarot
 #SBATCH --constraint=80gb
 source activate {env_name}
 """
 
-    python_script = f"python ../livecell_finetuning.py "
+    python_script = f"python ../finetuning.py "
 
     # add parameters to the python script
     python_script += f"-m {model_type} "  # choice of vit

@@ -14,12 +14,12 @@ ALL_SCRIPTS = [
     "precompute_embeddings", "evaluate_amg", "iterative_prompting", "evaluate_instance_segmentation"
 ]
 # replace with experiment folder
-EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/lora_datasets"
+EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
 
 
 def write_batch_script(
     env_name, out_path, inference_setup, checkpoint, model_type,
-    experiment_folder, dataset_name, delay=None, use_masks=False, lora_rank=None
+    experiment_folder, peft_rank, peft_module, dataset_name, delay=None, use_masks=False, 
 ):
     "Writing scripts with different fold-trainings for micro-sam evaluation"
     batch_script = f"""#!/bin/bash
@@ -60,11 +60,13 @@ conda activate {env_name} \n"""
         dataset_name = "mitolab/glycolytic_muscle"
     python_script += f"-d {dataset_name} "
 
-    if lora_rank is not None:
-        python_script += f"--lora_rank {lora_rank} "
-
+    if peft_rank is not None:
+        python_script += f"--peft_rank {peft_rank} "
+    if peft_module is not None:
+        python_script += f"--peft_module {peft_module} "
     # let's add the python script to the bash script
     batch_script += python_script
+
     if inference_setup == "precompute_embeddings":
         print(batch_script)
     with open(_op, "w") as f:
@@ -92,97 +94,24 @@ def get_batch_script_names(tmp_folder):
     return batch_script
 
 
-def get_checkpoint_path(experiment_set, dataset_name, model_type, region):
-    # let's set the experiment type - either using the generalist or just using vanilla model
-    if experiment_set == "generalist":
-        checkpoint = None
-        model_type = f"{model_type}_{region}"
-    elif experiment_set == "specialist_full_ft" or "specialist_lora" in experiment_set:
-        
-        _split = dataset_name.split("/")
-        if len(_split) > 1:
-            # it's the case for plantseg/root, we catch it and convert it to the expected format
-            dataset_name = f"{_split[0]}_{_split[1]}"
-
-        if dataset_name.startswith("platynereis"):
-            dataset_name = "platy_cilia"
-        if dataset_name.startswith("mitolab"):
-            dataset_name = "mitolab_glycolytic_muscle"
-
-        experiment = "lora_4" if "lora" in experiment_set else "full_ft"
-
-        checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model_type}/{dataset_name}_{experiment}/best.pt"
-
-    elif experiment_set == "vanilla":
-        checkpoint = None
-    else:
-        raise ValueError("Choose from generalist / vanilla")
-
-    if checkpoint is not None:
-        assert os.path.exists(checkpoint), checkpoint
-
-    return checkpoint
-
-
-def submit_slurm(model_type="vit_b"):
-    "Submit python script that needs gpus with given inputs on a slurm node."
+def run_batch_script(model_type, checkpoint, experiment_folder, dataset, peft_module=None, peft_rank=None, scripts=ALL_SCRIPTS):
     tmp_folder = "./gpu_jobs"
-    make_delay = "10s"  # wait for precomputing the embeddings and later run inference scripts
+    shutil.rmtree(tmp_folder, ignore_errors=True)
 
-    # env name
-    if model_type == "vit_t":
-        env_name = "mobilesam"
-    else:
-        env_name = "sam"
-
-    for dataset_name in ALL_DATASETS:
-        preprocess_data(dataset_name)
-        for experiment_set in ["vanilla", "generalist", "specialist_full_ft", "specialist_lora"]:
-
-            # set the rank if finetuned with lora
-            if "lora" in experiment_set:
-                lora_rank = 4
-            else: 
-                lora_rank = None
-        
-            # chose the region and model_type if training was from generalist
-            region = ALL_DATASETS[dataset_name]
-            if experiment_set == "vanilla":
-                model_type_roi = model_type
-            else:
-                model_type_roi = f"{model_type}_{region}"
-
-            # get checkpoint path
-            checkpoint = get_checkpoint_path(experiment_set, dataset_name, model_type_roi, region)
-
-            modality = region if region == "lm" else "em"
-            experiment_folder = EXPERIMENT_ROOT
-            experiment_folder += f"/{experiment_set}/{modality}/{dataset_name}/{model_type}/"
-
-            # make specifications for scripts
-
-            if experiment_set == "vanilla":
-                all_setups = ALL_SCRIPTS[:-1]
-            else:
-                all_setups = ALL_SCRIPTS
-
-            for current_setup in all_setups:
-                #print("Write batch script for", current_setup, checkpoint, model_type, dataset_name)
-
-                write_batch_script(
-                    env_name=env_name,
-                    out_path=get_batch_script_names(tmp_folder),
-                    inference_setup=current_setup,
-                    checkpoint=checkpoint,
-                    model_type=model_type_roi,
-                    experiment_folder=experiment_folder,
-                    dataset_name=dataset_name,
-                    delay=None if current_setup == "precompute_embeddings" else make_delay,
-                    lora_rank=lora_rank
-                )
-
-    # the logic below automates the process of first running the precomputation of embeddings, and only then inference.
+    for current_setup in scripts:
+        write_batch_script(
+            inference_setup=current_setup,
+            env_name="mobilesam" if model_type == "vit_t" else "sam",
+            checkpoint=checkpoint,
+            model_type=model_type,
+            experiment_folder=experiment_folder,
+            out_path=get_batch_script_names(tmp_folder),
+            dataset_name=dataset,
+            peft_module=peft_module,
+            peft_rank=peft_rank,
+        )
     
+    # the logic below automates the process of first running the precomputation of embeddings, and only then inference.
     job_id = []
     for i, my_script in enumerate(sorted(glob(tmp_folder + "/*"))):
         cmd = ["sbatch", my_script]
@@ -195,16 +124,69 @@ def submit_slurm(model_type="vit_b"):
 
         if i == 0:
             job_id.append(re.findall(r'\d+', cmd_out.stdout)[0])
+
     
 
+def main(args):
+    for dataset_name, region in ALL_DATASETS.items():
+        # preprocess the data
+        preprocess_data(dataset_name)
+        
+        if args.run_vanilla:
+            # results on vanilla models if required
+            run_batch_script(
+                model_type="vit_b",
+                checkpoint=None,
+                experiment_folder=os.path.join(EXPERIMENT_ROOT, "vanilla", region, dataset_name, "vit_b"),
+                dataset=dataset_name,
+                scripts=ALL_SCRIPTS[:-1]
+            )
+        
+        if args.run_generalist:        
+            # results on generalist models if required
+            run_batch_script(
+                model_type=f"vit_b_{region}",
+                checkpoint=None,
+                experiment_folder=os.path.join(EXPERIMENT_ROOT, "generalist", region, dataset_name, "vit_b"),
+                dataset=dataset_name
+            )
 
-def main():
-    try:
-        shutil.rmtree("./gpu_jobs")
-    except FileNotFoundError:
-        pass
-    submit_slurm()
+    # find all checkpoints in the experiment directory and run all evaluation scripts for each of them
+    all_checkpoint_paths = glob(os.path.join(EXPERIMENT_ROOT, "**", "best.pt"), recursive=True)
+
+    for checkpoint_path in all_checkpoint_paths:
+        # the checkpoints all have the format checkpoints/<model_type>/<training_modality>/<dataset_name>_sam/best.pt
+
+        training_modality = checkpoint_path.split("/")[-3]
+        dataset_name = checkpoint_path.split("/")[-2].split("_")[0]
+        model_type = checkpoint_path.split("/")[-4]
+        region = ALL_DATASETS[dataset_name]
+        experiment_folder = os.path.join(EXPERIMENT_ROOT, training_modality, region, dataset_name, model_type)
+
+        if "lora" in training_modality or "factor" in training_modality:
+            peft_module = training_modality.split("_")[0]
+            peft_rank = training_modality.split("_")[1]
+
+        else:
+            peft_module = None
+            peft_rank = None
+
+        run_batch_script(
+            model_type=model_type,
+            checkpoint=checkpoint_path,
+            experiment_folder=experiment_folder,
+            peft_module=peft_module,
+            peft_rank=peft_rank,
+            dataset=dataset_name
+        )
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input_path", type=str, default="/scratch/usr/nimcarot/data")
+    parser.add_argument("-e", "--experiment_folder", type=str, default=EXPERIMENT_ROOT)
+    parser.add_argument("--run_vanilla", action="store_true")
+    parser.add_argument("--run_generalist", action="store_true")
+    args = parser.parse_args()
+    main(args)

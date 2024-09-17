@@ -124,10 +124,11 @@ def get_peft_kwargs(peft_rank, peft_module):
     if peft_module is None:
         peft_kwargs = None
     else:
+        assert peft_rank is not None, "Missing rank for peft finetuning."
         from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
-        if peft_module == 'LoRASurgery':
+        if peft_module == 'lora':
             module = LoRASurgery
-        elif peft_module == 'FacTSurgery':
+        elif peft_module == 'fact':
             module = FacTSurgery
         peft_kwargs = {"rank": peft_rank, "peft_module": module}
 
