@@ -130,8 +130,8 @@ def for_covid_if(save_path):
     for image_path in tqdm(all_image_paths[10:13]):
         image_id = Path(image_path).stem
 
-        image_save_dir = os.path.join(Path(image_path).parent, "slices", "val", "raw")
-        label_save_dir = os.path.join(Path(image_path).parent, "slices", "val", "labels")
+        image_save_dir = os.path.join(save_path, "val", "raw")
+        label_save_dir = os.path.join(save_path, "slices", "val", "labels")
 
         os.makedirs(image_save_dir, exist_ok=True)
         os.makedirs(label_save_dir, exist_ok=True)
