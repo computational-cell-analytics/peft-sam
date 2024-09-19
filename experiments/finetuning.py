@@ -3,10 +3,10 @@ import argparse
 
 import torch
 
-from peft_sam.get_data_loaders import _fetch_loaders
+from peft_sam.get_data_loaders import _fetch_loaders+
+from peft_sam.util import get_peft_kwargs
 import micro_sam.training as sam_training
 from micro_sam.util import export_custom_sam_model
-from micro_sam.models.peft_sam import FacTSurgery
 
 
 def finetune(args):
@@ -36,16 +36,7 @@ def finetune(args):
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
-    if args.peft_method is not None:
-        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
-        if args.peft_method == "lora":
-            peft_kwargs = {"rank": args.peft_rank, "peft_module": LoRASurgery}
-        elif args.peft_method == "fact":
-            peft_kwargs = {"rank": args.peft_rank, "peft_module": FacTSurgery}    
-    else: 
-        peft_kwargs = None
-
-
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method)
 
     # Run training.
     sam_training.train_sam(
@@ -98,11 +89,11 @@ def main():
     )
     parser.add_argument(
         "--dataset", "-d", type=str, required=True,
-        help="The dataset to use for training. Chose from 'livecell', 'covid_if', 'orgasegment', 'mitolab_glycolytic_muscle', 'platy_cylia', 'gonuclear."
+        help="The dataset to use for training."
     )
     parser.add_argument(
         "--input_path", "-i", type=str, default="/scratch/usr/nimcarot/data",
-        help="Specifies the path to the data directory (should be set to /usr/name/data if dataset is at /usr/name/data/dataset_name)"
+        help="Specifies the path to the data directory (set to ./data if dataset is at ./data/<dataset_name>)"
     )
     parser.add_argument(
         "--peft_rank", type=int, default=None, help="The rank for peft training."

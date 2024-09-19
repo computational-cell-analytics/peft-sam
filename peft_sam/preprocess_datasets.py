@@ -5,23 +5,14 @@ from tqdm import tqdm
 from pathlib import Path
 
 import h5py
-import z5py
 import numpy as np
 import imageio.v3 as imageio
-from scipy.ndimage import binary_closing
 from skimage.measure import label as connected_components
-from PIL import Image
 
 from elf.wrapper import RoiWrapper
 
 from torch_em.data import datasets
-from torch_em.data import MinForegroundSampler
-from torch_em.util.segmentation import size_filter
 from torch_em.transform.raw import normalize, normalize_percentile
-from torch_em.data import datasets
-
-
-from micro_sam.training import identity
 
 
 ROOT = "/scratch/usr/nimcarot/data/"
@@ -48,12 +39,14 @@ def convert_rgb(raw):
     raw = raw * 255
     return raw
 
+
 def has_foreground(label):
     if len(np.unique(label)) > 1:
         return True
     else:
         return False
-    
+
+
 def make_center_crop(image, desired_shape):
     if image.shape < desired_shape:
         return image
@@ -85,6 +78,7 @@ def save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_c
         labels_path = os.path.join(labels_dir, f"{slice_prefix_name}_{i+1:05}.tif")
         imageio.imwrite(raw_path, _raw, compression="zlib")
         imageio.imwrite(labels_path, instances, compression="zlib")
+
 
 def from_h5_to_tif(
     h5_vol_path, raw_key, raw_dir, labels_key, labels_dir, slice_prefix_name, do_connected_components=True,
@@ -128,7 +122,7 @@ def from_h5_to_tif(
 
             save_to_tif(0, raw, labels, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name)
 
-    
+
 def for_covid_if(save_path):
     all_image_paths = sorted(glob(os.path.join(ROOT, "covid_if", "*.h5")))
 
@@ -175,7 +169,7 @@ def for_platynereis(save_dir, choice="cilia"):
         for test: we take validation vol 1
 
     """
-    roi_slice = np.s_[85:,:,:]
+    roi_slice = np.s_[85:, :, :]
     if choice == "cilia":
         vol_paths = sorted(glob(os.path.join(ROOT, "platynereis", "cilia", "train_*")))
         for vol_path in vol_paths:
@@ -190,20 +184,19 @@ def for_platynereis(save_dir, choice="cilia"):
                 labels_dir=os.path.join(save_dir, choice, "labels"),
                 slice_prefix_name=f"platy_{choice}_{split}_{vol_id}",
                 roi_slices=roi_slice if split == "val" else None,
-    
             )
-
 
 
 def for_mitolab(save_path):
     """
-    for mitolab glycolytic muscle 
-    """
+    for mitolab glycolytic muscle
+
     train_rois = np.s_[0:175, :, :]
     val_rois = np.s_[175:225, :, :]
     test_rois = np.s_[225:, :, :]
+
+    """
     all_dataset_ids = []
-    
     _roi_vol_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "mito_benchmarks", "*")))
 
     for vol_path in _roi_vol_paths:
@@ -234,8 +227,8 @@ def for_mitolab(save_path):
                 labels_path = os.path.join(save_path, dataset_id, "labels", f"{dataset_id}_{i+1:05}.tif")
 
                 imageio.imwrite(raw_path, slice_em, compression="zlib")
-                imageio.imwrite(labels_path, instances, compression="zlib") 
-    	
+                imageio.imwrite(labels_path, instances, compression="zlib")
+
     # now, let's work on the tem dataset
     image_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "tem_benchmark", "images", "*")))
     mask_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "tem_benchmark", "masks", "*")))
@@ -259,9 +252,10 @@ def for_mitolab(save_path):
     all_dataset_ids.append("tem")
 
     for dataset_id in all_dataset_ids:
-        make_custom_splits(val_samples=10, save_dir=os.path.join(save_path, dataset_id))
+        make_custom_splits(save_dir=os.path.join(save_path, dataset_id))
 
-def make_custom_splits(val_samples, save_dir):
+
+def make_custom_splits(save_dir):
     def move_samples(split, all_raw_files, all_label_files):
         for raw_path, label_path in (zip(all_raw_files, all_label_files)):
             # let's move the raw slice
@@ -299,13 +293,14 @@ def make_custom_splits(val_samples, save_dir):
     shutil.rmtree(os.path.join(save_dir, "raw"))
     shutil.rmtree(os.path.join(save_dir, "labels"))
 
+
 def for_orgasegment(save_path):
 
     val_img_paths = sorted(glob(os.path.join(ROOT, "orgasegment", "val", "*_img.jpg")))
     val_label_paths = sorted(glob(os.path.join(ROOT, "orgasegment", "val", "*_masks_organoid.png")))
     test_img_paths = sorted(glob(os.path.join(ROOT, "orgasegment", "eval", "*_img.jpg")))
     test_label_paths = sorted(glob(os.path.join(ROOT, "orgasegment", "eval", "*_masks_organoid.png")))
-    
+
     os.makedirs(os.path.join(save_path, "test", "raw"), exist_ok=True)
     os.makedirs(os.path.join(save_path, "val", "raw"), exist_ok=True)
     os.makedirs(os.path.join(save_path, "test", "labels"), exist_ok=True)
@@ -321,21 +316,22 @@ def for_orgasegment(save_path):
 
             if len(img_shape) == 2:
                 image = np.stack([image, image, image], axis=2)
-            
-            imageio.imwrite(os.path.join(save_path,_split, "raw", f"orgasegment_{_split}_{i+1:05}.tif"), image)
-            imageio.imwrite(os.path.join(save_path,_split, "labels", f"orgasegment_{_split}_{i+1:05}.tif"), label)
+
+            imageio.imwrite(os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}.tif"), image)
+            imageio.imwrite(os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}.tif"), label)
+
 
 def for_gonuclear(save_path):
 
     go_nuclear_val_vol = os.path.join(ROOT, "gonuclear", "gonuclear_datasets", "1139.h5")
-    go_nuclear_test_vol = os.path.join(ROOT, "gonuclear", "gonuclear_datasets","1170.h5")
+    go_nuclear_test_vol = os.path.join(ROOT, "gonuclear", "gonuclear_datasets", "1170.h5")
     from_h5_to_tif(
         h5_vol_path=go_nuclear_val_vol,
         raw_key="raw/nuclei",
         raw_dir=os.path.join(save_path, "val", "raw"),
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "val", "labels"),
-        slice_prefix_name=f"gonuclear_val_1129",
+        slice_prefix_name="gonuclear_val_1129",
         roi_slices=None
     )
     from_h5_to_tif(
@@ -344,18 +340,21 @@ def for_gonuclear(save_path):
         raw_dir=os.path.join(save_path, "test", "raw"),
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "test", "labels"),
-        slice_prefix_name=f"gonuclear_test_1170",
+        slice_prefix_name="gonuclear_test_1170",
         roi_slices=None
     )
-
 
 
 def download_all_datasets(path):
     datasets.get_platynereis_cilia_dataset(os.path.join(path, "platynereis"), patch_shape=(1, 512, 512), download=True)
     datasets.get_covid_if_dataset(os.path.join(path, "covid_if"), patch_shape=(1, 512, 512), download=True)
-    datasets.get_orgasegment_dataset(os.path.join(path, "orgasegment"), split="val", patch_shape=(512,512), download=True)
-    datasets.get_orgasegment_dataset(os.path.join(path, "orgasegment"), split="eval", patch_shape=(512,512), download=True)
-    datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512), segmentation_task="nuclei", download=True)
+    datasets.get_orgasegment_dataset(os.path.join(path, "orgasegment"), split="val",
+                                     patch_shape=(512, 512), download=True)
+    datasets.get_orgasegment_dataset(os.path.join(path, "orgasegment"), split="eval",
+                                     patch_shape=(512, 512), download=True)
+    datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512),
+                                   segmentation_task="nuclei", download=True)
+
 
 def main():
 
@@ -366,6 +365,7 @@ def main():
     preprocess_data("mitolab")
     preprocess_data("orgasegment")
     preprocess_data("gonuclear")
+
 
 if __name__ == "__main__":
     main()

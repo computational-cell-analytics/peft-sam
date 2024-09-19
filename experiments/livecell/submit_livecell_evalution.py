@@ -3,10 +3,8 @@ import os
 import shutil
 import subprocess
 from glob import glob
-from pathlib import Path
 from datetime import datetime
 
-from peft_sam.preprocess_datasets import preprocess_data
 
 ALL_SCRIPTS = [
     "precompute_embeddings", "evaluate_amg", "iterative_prompting", "evaluate_instance_segmentation"
@@ -42,7 +40,7 @@ conda activate {env_name} \n"""
 
     _op = out_path[:-3] + f"_{inference_setup}.sh"
 
-    if checkpoint is not None:# add the finetuned checkpoint
+    if checkpoint is not None:  # add the finetuned checkpoint
         python_script += f"-c {checkpoint} "
 
     # name of the model configuration
@@ -52,7 +50,7 @@ conda activate {env_name} \n"""
     python_script += f"-e {experiment_folder} "
 
     # IMPORTANT: choice of the dataset
-    python_script += f"-d livecell "
+    python_script += "-d livecell "
 
     if peft_rank is not None:
         python_script += f"--peft_rank {peft_rank} "
@@ -93,7 +91,6 @@ def submit_slurm():
     tmp_folder = "./gpu_jobs"
     make_delay = "10s"  # wait for precomputing the embeddings and later run inference scripts
 
- 
     all_checkpoints = glob(os.path.join(EXPERIMENT_ROOT, "checkpoints", "**", "best.pt"), recursive=True)
     model_type = "vit_b"
 
@@ -124,7 +121,6 @@ def submit_slurm():
                 delay=None if current_setup == "precompute_embeddings" else make_delay,
                 peft_rank=peft_rank,
                 peft_method=peft_method
-            
             )
 
     job_id = []
@@ -139,7 +135,8 @@ def submit_slurm():
 
         if i == 0:
             job_id.append(re.findall(r'\d+', cmd_out.stdout)[0])
-    
+
+
 def main():
     try:
         shutil.rmtree("./gpu_jobs")
@@ -148,8 +145,5 @@ def main():
     submit_slurm()
 
 
-
 if __name__ == "__main__":
     main()
-
-

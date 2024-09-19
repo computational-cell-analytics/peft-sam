@@ -1,11 +1,9 @@
 import os
 import argparse
-import warnings
 from glob import glob
 
 from torch_em.data import datasets
 
-from micro_sam.util import get_sam_model
 from micro_sam.evaluation.livecell import _get_livecell_paths
 
 
@@ -118,19 +116,3 @@ def none_or_str(value):
     if value == 'None':
         return None
     return value
-
-
-def get_peft_kwargs(peft_rank, peft_module):
-    if peft_module is None:
-        peft_kwargs = None
-    else:
-        assert peft_rank is not None, "Missing rank for peft finetuning."
-        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
-        if peft_module == 'lora':
-            module = LoRASurgery
-        elif peft_module == 'fact':
-            module = FacTSurgery
-        peft_kwargs = {"rank": peft_rank, "peft_module": module}
-
-    return peft_kwargs
-

@@ -3,12 +3,12 @@ import os
 import shutil
 import subprocess
 from glob import glob
-from pathlib import Path
 from datetime import datetime
 
 from peft_sam.preprocess_datasets import preprocess_data
 
-ALL_DATASETS = {'covid_if':'lm', 'orgasegment':'lm', 'gonuclear':'lm', 'mitolab_glycolytic_muscle':'em_organelles', 'platy_cilia':'em_organelles'}
+ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+                'platy_cilia': 'em_organelles'}
 
 ALL_SCRIPTS = [
     "precompute_embeddings", "evaluate_amg", "iterative_prompting", "evaluate_instance_segmentation"
@@ -19,7 +19,7 @@ EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
 
 def write_batch_script(
     env_name, out_path, inference_setup, checkpoint, model_type,
-    experiment_folder, peft_rank, peft_module, dataset_name, delay=None, use_masks=False, 
+    experiment_folder, peft_rank, peft_module, dataset_name, delay=None, use_masks=False,
 ):
     "Writing scripts with different fold-trainings for micro-sam evaluation"
     batch_script = f"""#!/bin/bash
@@ -44,7 +44,7 @@ conda activate {env_name} \n"""
 
     _op = out_path[:-3] + f"_{inference_setup}.sh"
 
-    if checkpoint is not None:# add the finetuned checkpoint
+    if checkpoint is not None:  # add the finetuned checkpoint
         python_script += f"-c {checkpoint} "
 
     # name of the model configuration
@@ -94,7 +94,8 @@ def get_batch_script_names(tmp_folder):
     return batch_script
 
 
-def run_batch_script(model_type, checkpoint, experiment_folder, dataset, peft_module=None, peft_rank=None, scripts=ALL_SCRIPTS):
+def run_batch_script(model_type, checkpoint, experiment_folder, dataset, peft_module=None, peft_rank=None,
+                     scripts=ALL_SCRIPTS):
     tmp_folder = "./gpu_jobs"
     shutil.rmtree(tmp_folder, ignore_errors=True)
 
@@ -110,7 +111,7 @@ def run_batch_script(model_type, checkpoint, experiment_folder, dataset, peft_mo
             peft_module=peft_module,
             peft_rank=peft_rank,
         )
-    
+
     # the logic below automates the process of first running the precomputation of embeddings, and only then inference.
     job_id = []
     for i, my_script in enumerate(sorted(glob(tmp_folder + "/*"))):
@@ -125,13 +126,12 @@ def run_batch_script(model_type, checkpoint, experiment_folder, dataset, peft_mo
         if i == 0:
             job_id.append(re.findall(r'\d+', cmd_out.stdout)[0])
 
-    
 
 def main(args):
     for dataset_name, region in ALL_DATASETS.items():
         # preprocess the data
         preprocess_data(dataset_name)
-        
+
         if args.run_vanilla:
             # results on vanilla models if required
             run_batch_script(
@@ -141,8 +141,8 @@ def main(args):
                 dataset=dataset_name,
                 scripts=ALL_SCRIPTS[:-1]
             )
-        
-        if args.run_generalist:        
+
+        if args.run_generalist:
             # results on generalist models if required
             run_batch_script(
                 model_type=f"vit_b_{region}",

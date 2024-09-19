@@ -5,6 +5,7 @@ from datetime import datetime
 
 ROOT = "/scratch/usr/nimcarot/sam/experiments/livecell_peft"
 
+
 def write_batch_script(
     env_name, save_root, model_type, script_name, checkpoint_path, peft_method, peft_rank, freeze
 ):
@@ -23,7 +24,7 @@ def write_batch_script(
 source activate {env_name}
 """
 
-    python_script = f"python ../finetuning.py "
+    python_script = "python ../finetuning.py "
 
     # add parameters to the python script
     python_script += f"-m {model_type} "  # choice of vit

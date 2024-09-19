@@ -1,16 +1,15 @@
 import os
 
 import numpy as np
-from math import ceil, floor
 import torch
 
 from torch_em.util.debug import check_loader
 from torch_em.data import MinInstanceSampler
 from torch_em.data.datasets import light_microscopy, electron_microscopy
-import micro_sam.training as sam_training
-from peft_sam.util import RawTrafo, LabelTrafo
 from torch_em.transform.label import PerObjectDistanceTransform
-
+import micro_sam.training as sam_training
+from micro_sam.training.util import ResizeLabelTrafo
+from peft_sam.util import RawTrafo
 
 
 def _fetch_loaders(dataset_name, data_root):
@@ -20,7 +19,10 @@ def _fetch_loaders(dataset_name, data_root):
         # 1, Covid IF does not have internal splits. For this example I chose first 10 samples for training,
         # and next 3 samples for validation, left the rest for testing.
 
-        label_transform = LabelTrafo(do_padding=False)
+        label_transform = PerObjectDistanceTransform(
+            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
+            min_size=0
+        )
         raw_transform = RawTrafo(do_padding=False, do_rescaling=True)
 
         train_loader = light_microscopy.get_covid_if_loader(
@@ -49,27 +51,44 @@ def _fetch_loaders(dataset_name, data_root):
 
     elif dataset_name == "livecell":
         label_transform = PerObjectDistanceTransform(
-            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True, min_size=25
+            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
+            min_size=25
         )
         raw_transform = sam_training.identity  # the current workflow avoids rescaling the inputs to [-1, 1]
         train_loader = light_microscopy.get_livecell_loader(
-            path=os.path.join(data_root, "livecell"), patch_shape=(512,512), split="train", batch_size=2, num_workers=16,
-            cell_types=None, download=True, shuffle=True, label_transform=label_transform,
-            raw_transform=raw_transform, label_dtype=torch.float32,
+            path=os.path.join(data_root, "livecell"),
+            patch_shape=(512, 512),
+            split="train",
+            batch_size=2,
+            num_workers=16,
+            cell_types=None,
+            download=True,
+            shuffle=True,
+            label_transform=label_transform,
+            raw_transform=raw_transform,
+            label_dtype=torch.float32,
         )
         val_loader = light_microscopy.get_livecell_loader(
-            path=os.path.join(data_root, "livecell"), patch_shape=(512,512), split="val", batch_size=4, num_workers=16,
-            cell_types=None, download=True, shuffle=True, label_transform=label_transform,
-            raw_transform=raw_transform, label_dtype=torch.float32,
+            path=os.path.join(data_root, "livecell"),
+            patch_shape=(512, 512),
+            split="val",
+            batch_size=4,
+            num_workers=16,
+            cell_types=None,
+            download=True,
+            shuffle=True,
+            label_transform=label_transform,
+            raw_transform=raw_transform,
+            label_dtype=torch.float32,
         )
-
-
 
     elif dataset_name == "orgasegment":
         # 2. OrgaSegment has internal splits provided. We follow the respective splits for our experiments.
-        
+        label_transform = PerObjectDistanceTransform(
+            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
+            min_size=0
+        )
         raw_transform = RawTrafo(do_padding=False, triplicate_dims=True)
-        label_transform = LabelTrafo(do_padding=False)
 
         train_loader = light_microscopy.get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
@@ -100,11 +119,12 @@ def _fetch_loaders(dataset_name, data_root):
         # ...
         train_rois = np.s_[0:175, :, :]
         val_rois = np.s_[175:225, :, :]
-        test_rois = np.s_[225:, :, :]
 
-        raw_transform = RawTrafo((1,512,512), do_padding=False)
-        label_transform = LabelTrafo((512,512), do_padding=False)
-
+        raw_transform = RawTrafo((1, 512, 512), do_padding=False)
+        label_transform = PerObjectDistanceTransform(
+            distances=True, boundary_distances=True, directed_distances=False,
+            foreground=True, instances=True, min_size=0
+        )
         train_loader = electron_microscopy.cem.get_benchmark_loader(
             path=os.path.join(data_root, "mitolab"),
             dataset_id=3,
@@ -146,8 +166,8 @@ def _fetch_loaders(dataset_name, data_root):
             1: np.s_[85:, :, :], 2: np.s_[85:, :, :]
         }
 
-        raw_transform = RawTrafo((1,512,512))
-        label_transform = LabelTrafo((512,512))
+        raw_transform = RawTrafo((1, 512, 512))
+        label_transform = ResizeLabelTrafo((512, 512))
 
         train_loader = electron_microscopy.get_platynereis_cilia_loader(
             path=os.path.join(data_root, "platynereis"),
@@ -176,36 +196,34 @@ def _fetch_loaders(dataset_name, data_root):
         )
 
     elif dataset_name == "gonuclear":
-        # Dataset contains 5 volumes. Use volumes 1-3 for training, volume 4 for validation and volume 5 for testing. 
-        
-        # NOTE nuclear or cell segmention ? 
+        # Dataset contains 5 volumes. Use volumes 1-3 for training, volume 4 for validation and volume 5 for testing.
+
         train_loader = light_microscopy.get_gonuclear_loader(
             path=os.path.join(data_root, "gonuclear"),
             patch_shape=(1, 512, 512),
             batch_size=2,
             segmentation_task="nuclei",
-            download=True, 
-            sample_ids=[1135, 1136, 1137], 
-            raw_transform=RawTrafo((1,512,512), do_rescaling=True),
-            label_transform=LabelTrafo((512,512)),
+            download=True,
+            sample_ids=[1135, 1136, 1137],
+            raw_transform=RawTrafo((1, 512, 512), do_rescaling=True),
+            label_transform=ResizeLabelTrafo((512, 512)),
             num_workers=16,
             sampler=MinInstanceSampler(),
             ndim=2
-            
         )
         val_loader = light_microscopy.get_gonuclear_loader(
             path=os.path.join(data_root, "gonuclear"),
             patch_shape=(1, 512, 512),
             batch_size=2,
             segmentation_task="nuclei",
-            download=True, 
-            sample_ids=[1139], 
-            raw_transform=RawTrafo((1,512,512), do_rescaling=True), 
-            label_transform=LabelTrafo((512,512)),
+            download=True,
+            sample_ids=[1139],
+            raw_transform=RawTrafo((1, 512, 512), do_rescaling=True),
+            label_transform=ResizeLabelTrafo((512, 512)),
             num_workers=16,
             sampler=MinInstanceSampler(),
             ndim=2
-        )   
+        )
 
     else:
         raise ValueError(f"{dataset_name} is not a valid dataset name.")
@@ -214,16 +232,16 @@ def _fetch_loaders(dataset_name, data_root):
 
 
 def _verify_loaders():
-    dataset_name = "mitolab_glycolytic_muscle"
 
-    train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name)
+    for dataset_name in ["covid_if", "livecell", "orgasegment", "mitolab_glycolytic_muscle", "platy_cilia",
+                         "gonuclear"]:
+        train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name, data_root="/scratch/usr/nimcarot/data")
 
-    breakpoint()
-
-    # NOTE: if using on the cluster, napari visualization won't work with "check_loader".
-    # turn "plt=True" and provide path to save the matplotlib outputs of the loader.
-    check_loader(train_loader, 8, plt=True, save_path="./train_loader.png")
-    check_loader(val_loader, 8, plt=True, save_path="./val_loader.png")
+        #breakpoint()
+        # NOTE: if using on the cluster, napari visualization won't work with "check_loader".
+        # turn "plt=True" and provide path to save the matplotlib outputs of the loader.
+        check_loader(train_loader, 8, plt=True, save_path=f"./{dataset_name}_train_loader.png")
+        check_loader(val_loader, 8, plt=True, save_path=f"./{dataset_name}_val_loader.png")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,8 @@ import subprocess
 from datetime import datetime
 
 
-ALL_DATASETS = {'covid_if':'lm', 'orgasegment':'lm', 'gonuclear':'lm', 'mitolab_glycolytic_muscle':'em_organelles', 'platy_cilia':'em_organelles'}
+ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+                'platy_cilia': 'em_organelles'}
 
 
 def write_batch_script(
@@ -91,7 +92,6 @@ def run_rank_study():
                 )
 
 
-
 def run_all_dataset_ft():
     """
     Submit the finetuning jobs for all datasets
@@ -125,7 +125,7 @@ def main(args):
 
     # Get the corresponding experiment function based on the argument and execute it
     experiment_function = switch.get(args.experiment)
-    
+
     # Run the selected experiment
     experiment_function()
 
@@ -140,9 +140,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
     parser.add_argument(
-        '--experiment', 
-        choices=['ft_all_data', 'rank_study'], 
-        required=True, 
+        '--experiment',
+        choices=['ft_all_data', 'rank_study'],
+        required=True,
         help="Specify which experiment to run"
     )
 
