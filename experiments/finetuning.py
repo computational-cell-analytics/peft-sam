@@ -30,13 +30,12 @@ def finetune(args):
     else:
         checkpoint_name = f"{args.model_type}/full_ft/{dataset}_sam"
 
-
     # all the stuff we need for training
     train_loader, val_loader = _fetch_loaders(dataset, args.input_path)
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method)
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method, args.fact_dropout)
 
     # Run training.
     sam_training.train_sam(
@@ -100,6 +99,9 @@ def main():
     )
     parser.add_argument(
         "--peft_method", type=str, default=None, help="The method to use for PEFT. Either 'lora' or 'fact'."
+    )
+    parser.add_argument(
+        "--fact_dropout", type=float, default=None, help="The dropout rate to use for FacT."
     )
     args = parser.parse_args()
     finetune(args)

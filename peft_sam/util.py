@@ -3,6 +3,7 @@ from math import ceil, floor
 
 from torch_em.transform.raw import normalize
 
+EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/"
 
 class RawTrafo:
     """
@@ -46,7 +47,7 @@ class RawTrafo:
         return raw
 
 
-def get_peft_kwargs(peft_rank, peft_module):
+def get_peft_kwargs(peft_rank, peft_module, fact_dropout=None):
     if peft_module is None:
         peft_kwargs = None
     else:
@@ -56,6 +57,6 @@ def get_peft_kwargs(peft_rank, peft_module):
             module = LoRASurgery
         elif peft_module == 'fact':
             module = FacTSurgery
-        peft_kwargs = {"rank": peft_rank, "peft_module": module}
+        peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": fact_dropout}
 
     return peft_kwargs
