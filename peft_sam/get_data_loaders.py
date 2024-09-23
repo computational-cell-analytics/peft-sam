@@ -67,12 +67,13 @@ def _fetch_loaders(dataset_name, data_root):
             label_transform=label_transform,
             raw_transform=raw_transform,
             label_dtype=torch.float32,
+            sampler=MinInstanceSampler()
         )
         val_loader = light_microscopy.get_livecell_loader(
             path=os.path.join(data_root, "livecell"),
             patch_shape=(512, 512),
             split="val",
-            batch_size=4,
+            batch_size=2,
             num_workers=16,
             cell_types=None,
             download=True,
@@ -80,6 +81,7 @@ def _fetch_loaders(dataset_name, data_root):
             label_transform=label_transform,
             raw_transform=raw_transform,
             label_dtype=torch.float32,
+            sampler=MinInstanceSampler()
         )
 
     elif dataset_name == "orgasegment":
