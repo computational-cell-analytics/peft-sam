@@ -5,21 +5,17 @@ import subprocess
 from glob import glob
 from datetime import datetime
 
-from peft_sam.preprocess_datasets import preprocess_data
-
-ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles'}
 
 ALL_SCRIPTS = [
     "precompute_embeddings", "evaluate_amg", "iterative_prompting", "evaluate_instance_segmentation"
 ]
 # replace with experiment folder
-EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
+EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/fact_dropout"
 
 
 def write_batch_script(
     env_name, out_path, inference_setup, checkpoint, model_type,
-    experiment_folder, peft_rank, peft_module, fact_dropout, delay=None, use_masks=False,
+    experiment_folder, peft_rank, peft_module, fact_dropout, delay=None,
 ):
     "Writing scripts with different fold-trainings for micro-sam evaluation"
     batch_script = f"""#!/bin/bash
@@ -125,40 +121,17 @@ def run_batch_script(model_type, checkpoint, experiment_folder, peft_module=None
 
 
 def main(args):
-    for dataset_name, region in ALL_DATASETS.items():
-        # preprocess the data
-        preprocess_data(dataset_name)
-
-        if args.run_vanilla:
-            # results on vanilla models if required
-            run_batch_script(
-                model_type="vit_b",
-                checkpoint=None,
-                experiment_folder=os.path.join(EXPERIMENT_ROOT, "vanilla", region, dataset_name, "vit_b"),
-                scripts=ALL_SCRIPTS[:-1]
-            )
-
-        if args.run_generalist:
-            # results on generalist models if required
-            run_batch_script(
-                model_type=f"vit_b_{region}",
-                checkpoint=None,
-                experiment_folder=os.path.join(EXPERIMENT_ROOT, "generalist", region, dataset_name, "vit_b"),
-            )
-
     # find all checkpoints in the experiment directory and run all evaluation scripts for each of them
-    all_checkpoint_paths = glob(os.path.join(EXPERIMENT_ROOT, "**", "best.pt"), recursive=True)
+    all_checkpoint_paths = glob(os.path.join(args.experiment_folder, "**", "best.pt"), recursive=True)
 
     for checkpoint_path in all_checkpoint_paths:
         # the checkpoints all have the format checkpoints/<model_type>/<training_modality>/<dataset_name>_sam/best.pt
 
         training_modality = checkpoint_path.split("/")[-3]
-        dataset_name = checkpoint_path.split("/")[-2].split("_")[0]
         model_type = checkpoint_path.split("/")[-4]
-        region = ALL_DATASETS[dataset_name]
-        experiment_folder = os.path.join(EXPERIMENT_ROOT, training_modality, region, dataset_name, model_type)
+        experiment_folder = os.path.join(EXPERIMENT_ROOT, training_modality, "lm", "livecell", model_type)
 
-        if "lora" in training_modality or "factor" in training_modality:
+        if "lora" in training_modality or "fact" in training_modality:
             peft_module = training_modality.split("_")[0]
             peft_rank = training_modality.split("_")[1]
             fact_dropout = training_modality.split("_")[2]
@@ -175,7 +148,6 @@ def main(args):
             peft_module=peft_module,
             peft_rank=peft_rank,
             fact_dropout=fact_dropout,
-            dataset=dataset_name
         )
 
 
@@ -184,7 +156,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input_path", type=str, default="/scratch/usr/nimcarot/data")
     parser.add_argument("-e", "--experiment_folder", type=str, default=EXPERIMENT_ROOT)
-    parser.add_argument("--run_vanilla", action="store_true")
-    parser.add_argument("--run_generalist", action="store_true")
     args = parser.parse_args()
     main(args)
