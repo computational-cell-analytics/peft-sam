@@ -90,7 +90,7 @@ def run_rank_study():
     """
     Submit the finetuning scripts for a rank study on livecell dataset
     """
-    ranks = [1, 2, 4, 8, 16, 32, 64]
+    ranks = [1, 2, 4, 8, 16, 32]
     for rank in ranks:
         script_name = get_batch_script_names("./gpu_jobs")
         write_batch_script(
