@@ -7,6 +7,7 @@ from peft_sam.get_data_loaders import _fetch_loaders
 from peft_sam.util import get_peft_kwargs
 import micro_sam.training as sam_training
 from micro_sam.util import export_custom_sam_model
+from micro_sam.training import _count_parameters
 
 
 def finetune(args):

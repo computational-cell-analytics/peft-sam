@@ -2,6 +2,9 @@
 This folder contains experiments that aim to find optimal hyperparameters for the FacT method.
 ## Dropout Experiments
 It is tested whether or not the FacT method profits from dropout layers. 
+- Rank=4
+- Number of parameters: 4.14M
+- Memory usage during training: 48890MiB
 
 ### Inference Results
 
@@ -19,5 +22,6 @@ It is tested whether or not the FacT method profits from dropout layers.
 |  1 |        None       |              61608.4 |                89815.9 |              1.79632 |
 |  2 |        0.1        |             104977   |               104977   |              2.09954 |
 |  3 |        0.5        |              78919.3 |               105452   |              2.10905 |
+
 
 ## Rank Study
