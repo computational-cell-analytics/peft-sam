@@ -239,7 +239,7 @@ def _verify_loaders():
                          "gonuclear"]:
         train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name, data_root="/scratch/usr/nimcarot/data")
 
-        breakpoint()
+        # breakpoint()
         # NOTE: if using on the cluster, napari visualization won't work with "check_loader".
         # turn "plt=True" and provide path to save the matplotlib outputs of the loader.
         check_loader(train_loader, 8, plt=True, save_path=f"./{dataset_name}_train_loader.png")
