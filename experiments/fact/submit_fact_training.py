@@ -3,13 +3,11 @@ import shutil
 import subprocess
 from datetime import datetime
 
-
-ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles'}
+from peft_sam.util import EXPERIMENT_ROOT
 
 
 def write_batch_script(
-    env_name, save_root, model_type, script_name, checkpoint_path, peft_rank, peft_method, dataset
+    env_name, save_root, model_type, script_name, checkpoint_path, peft_rank, peft_method, dropout,
 ):
     assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
 
@@ -30,7 +28,7 @@ source activate {env_name}
 
     # add parameters to the python script
     python_script += f"-m {model_type} "  # choice of vit
-    python_script += f"-d {dataset} "  # dataset
+    python_script += "-d livecell "  # dataset
 
     if checkpoint_path is not None:
         python_script += f"-c {checkpoint_path} "
@@ -42,6 +40,8 @@ source activate {env_name}
         python_script += f"--peft_rank {peft_rank} "
     if peft_method is not None:
         python_script += f"--peft_method {peft_method} "
+    if dropout is not None:
+        python_script += f"--fact_dropout {dropout} "
     # let's add the python script to the bash script
     batch_script += python_script
     print(batch_script)
@@ -65,61 +65,49 @@ def get_batch_script_names(tmp_folder):
     return batch_script
 
 
-def run_rank_study():
+def run_dropout_study():
     """
-    Submit the finetuning jobs for a rank study on mito-lab and orgasegment datasets
-    - from generalist and from default SAM
-    - for ranks 1, 2, 4, 8, 16, 32, 64
-    """
-
-    ranks = [None, 1, 2, 4, 8, 16, 32, 64]
-    for rank in ranks:
-        for dataset in ["mitolab_glycolytic_muscle", "orgasegment"]:
-            region = ALL_DATASETS[dataset]
-            generalist_model = f"vit_b_{region}"
-            for base_model in ["vit_b", generalist_model]:
-                script_name = get_batch_script_names("./gpu_jobs")
-                peft_method = "lora" if rank is not None else None
-                write_batch_script(
-                    env_name="sam",
-                    save_root=args.save_root,
-                    model_type=base_model,
-                    script_name=script_name,
-                    checkpoint_path=None,
-                    peft_rank=rank,
-                    peft_method=peft_method,
-                    dataset=dataset,
-                )
-
-
-def run_all_dataset_ft():
-    """
-    Submit the finetuning jobs for all datasets
-    - from generalist full finetuning
-    - from generalist lora
+    Submit the finetuning jobs for a study on the dropout rate with rates
+    [None, 0.1, 0.25, 0.5]
     """
 
-    for dataset, region in ALL_DATASETS.items():
-        for rank in [None, 4]:
-            generalist_model = f"vit_b_{region}"
-            script_name = get_batch_script_names("./gpu_jobs")
-            peft_method = "lora" if rank is not None else None
-            write_batch_script(
-                env_name="sam",
-                save_root=args.save_root,
-                model_type=generalist_model,
-                script_name=script_name,
-                checkpoint_path=None,
-                peft_rank=rank,
-                peft_method=peft_method,
-                dataset=dataset,
+    dropout_rates = [None, 0.1, 0.25, 0.5]
+    for dropout in dropout_rates:
+        script_name = get_batch_script_names("./gpu_jobs")
+        write_batch_script(
+            env_name="sam",
+            save_root=args.save_root,
+            model_type="vit_b",
+            script_name=script_name,
+            checkpoint_path=None,
+            peft_rank=4,
+            peft_method="fact",
+            dropout=dropout,
             )
 
 
-def main(args):
+def run_rank_study():
+    """
+    Submit the finetuning scripts for a rank study on livecell dataset
+    """
+    ranks = [1, 2, 4, 8, 16, 32]
+    for rank in ranks:
+        script_name = get_batch_script_names("./gpu_jobs")
+        write_batch_script(
+            env_name="sam",
+            save_root=args.save_root,
+            model_type="vit_b",
+            script_name=script_name,
+            checkpoint_path=None,
+            peft_rank=rank,
+            peft_method="fact",
+            dropout=0.1,
+        )
 
+
+def main(args):
     switch = {
-        'ft_all_data': run_all_dataset_ft,
+        'dropout_study': run_dropout_study,
         'rank_study': run_rank_study
     }
 
@@ -138,10 +126,11 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
+    parser.add_argument("-s", "--save_root", type=str, default=os.path.join(EXPERIMENT_ROOT, "fact_dropout"),
+                        help="Path to save checkpoints.")
     parser.add_argument(
         '--experiment',
-        choices=['ft_all_data', 'rank_study'],
+        choices=['dropout_study', 'rank_study'],
         required=True,
         help="Specify which experiment to run"
     )

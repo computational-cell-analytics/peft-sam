@@ -57,7 +57,7 @@ def _fetch_loaders(dataset_name, data_root):
         raw_transform = sam_training.identity  # the current workflow avoids rescaling the inputs to [-1, 1]
         train_loader = light_microscopy.get_livecell_loader(
             path=os.path.join(data_root, "livecell"),
-            patch_shape=(512, 512),
+            patch_shape=(520, 704),
             split="train",
             batch_size=2,
             num_workers=16,
@@ -67,12 +67,13 @@ def _fetch_loaders(dataset_name, data_root):
             label_transform=label_transform,
             raw_transform=raw_transform,
             label_dtype=torch.float32,
+            sampler=MinInstanceSampler()
         )
         val_loader = light_microscopy.get_livecell_loader(
             path=os.path.join(data_root, "livecell"),
-            patch_shape=(512, 512),
+            patch_shape=(520, 704),
             split="val",
-            batch_size=4,
+            batch_size=1,
             num_workers=16,
             cell_types=None,
             download=True,
@@ -80,6 +81,7 @@ def _fetch_loaders(dataset_name, data_root):
             label_transform=label_transform,
             raw_transform=raw_transform,
             label_dtype=torch.float32,
+            sampler=MinInstanceSampler()
         )
 
     elif dataset_name == "orgasegment":
@@ -237,7 +239,7 @@ def _verify_loaders():
                          "gonuclear"]:
         train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name, data_root="/scratch/usr/nimcarot/data")
 
-        #breakpoint()
+        # breakpoint()
         # NOTE: if using on the cluster, napari visualization won't work with "check_loader".
         # turn "plt=True" and provide path to save the matplotlib outputs of the loader.
         check_loader(train_loader, 8, plt=True, save_path=f"./{dataset_name}_train_loader.png")
