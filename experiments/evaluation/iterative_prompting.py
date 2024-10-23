@@ -13,13 +13,12 @@ def _run_iterative_prompting(dataset_name, exp_folder, predictor, start_with_box
     prediction_root = os.path.join(
         exp_folder, "start_with_box" if start_with_box_prompt else "start_with_point"
     )
-    embedding_folder = os.path.join(exp_folder, "embeddings")
     image_paths, gt_paths = get_paths(dataset_name, split="test")
     inference.run_inference_with_iterative_prompting(
         predictor=predictor,
         image_paths=image_paths,
         gt_paths=gt_paths,
-        embedding_dir=embedding_folder,
+        embedding_dir=None,  # Replace with directory to cache embeddings, eg, 'os.path.join(exp_folder, "embeddings")'
         prediction_dir=prediction_root,
         start_with_box_prompt=start_with_box_prompt,
         use_masks=use_masks
@@ -46,9 +45,7 @@ def main():
     peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module, args.fact_dropout)
 
     # get the predictor to perform inference
-    predictor = get_sam_model(
-        model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs,
-    )
+    predictor = get_sam_model(model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs)
 
     prediction_root = _run_iterative_prompting(
         args.dataset, args.experiment_folder, predictor, start_with_box_prompt, args.use_masks
