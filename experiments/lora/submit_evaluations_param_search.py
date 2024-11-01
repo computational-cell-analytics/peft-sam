@@ -50,7 +50,7 @@ conda activate {env_name} \n"""
     python_script += f"-e {experiment_folder} "
 
     # IMPORTANT: choice of the dataset
-    python_script += "-d livecell "
+    python_script += "-d orgasegment "
 
     if peft_rank is not None:
         python_script += f"--peft_rank {peft_rank} "
@@ -93,18 +93,14 @@ def run_scaling_factor_exp():
     tmp_folder = "./gpu_jobs"
     make_delay = "10s"  # wait for precomputing the embeddings and later run inference scripts
 
-    ranks = [1, 2, 4, 8, 16, 32, 64]
+    ranks = [1, 2, 4]
     alphas = [1, 2, 4, 8, 16, 32, 64]
 
     for alpha in alphas:
         for rank in ranks:
-            if not 0.25 <= alpha/rank <= 8:
-                continue
-            if alpha < 32:
-                continue
             # the checkpoints all have the format
             # checkpoints/<model_type>/lora/rank_<rank>/alpha_<alpha>/livecell_sam/best.pt
-            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b/lora/rank_{rank}/alpha_{alpha}/livecell_sam/best.pt"
+            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b/lora/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
             result_path = os.path.join(EXPERIMENT_ROOT, "lora", f"rank_{rank}", f"alpha_{alpha}")
             os.makedirs(result_path, exist_ok=True)
 
@@ -114,7 +110,7 @@ def run_scaling_factor_exp():
                     out_path=get_batch_script_names(tmp_folder),
                     inference_setup=current_setup,
                     checkpoint=checkpoint_path,
-                    model_type="vit_b",
+                    model_type="vit_b_lm",
                     experiment_folder=result_path,
                     delay=None if current_setup == "precompute_embeddings" else make_delay,
                     peft_rank=rank,

@@ -121,25 +121,22 @@ def run_all_dataset_ft():
             )
 
 
-def run_scaling_factor_exp(args):
+def run_scaling_factor_exp():
     """
     Submit the finetuning jobs LoRA on LIVECell
-    - alpha in [1, 2, 4, 8, 16, 32, 64]
+    - alpha in [1, 2, 4]
     - rank in [1, 2, 4, 8, 16, 32, 64]
     """
-    alphas = [1, 2, 4, 8, 16, 32, 64]
+    alphas = [1, 2, 4]
     ranks = [1, 2, 4, 8, 16, 32, 64]
 
     for alpha in alphas:
         for rank in ranks:
             # only consider those combinations where the ratio is within [0.25,8]
-            ratio = alpha / rank
-            if not (0.25 <= ratio <= 8):
-                continue
-            model = "vit_b"
+            model = "vit_b_lm"
             script_name = get_batch_script_names("./gpu_jobs")
             peft_method = "lora"
-            checkpoint_name = f"{model}/lora/rank_{rank}/alpha_{alpha}/livecell_sam"
+            checkpoint_name = f"{model}/lora/rank_{rank}/alpha_{alpha}/orgasegment_sam"
             write_batch_script(
                 env_name="sam",
                 save_root=args.save_root,
@@ -150,7 +147,7 @@ def run_scaling_factor_exp(args):
                 peft_method=peft_method,
                 alpha=alpha,
                 checkpoint_name=checkpoint_name,
-                dataset="livecell",
+                dataset="orgasegment",
             )
 
 
