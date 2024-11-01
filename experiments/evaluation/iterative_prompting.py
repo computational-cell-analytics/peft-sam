@@ -45,9 +45,7 @@ def main():
     peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module, args.fact_dropout)
 
     # get the predictor to perform inference
-    predictor = get_sam_model(
-        model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs,
-    )
+    predictor = get_sam_model(model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs)
 
     prediction_root = _run_iterative_prompting(
         args.dataset, args.experiment_folder, predictor, start_with_box_prompt, args.use_masks
