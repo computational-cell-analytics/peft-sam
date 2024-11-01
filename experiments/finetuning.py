@@ -23,8 +23,10 @@ def finetune(args):
     dataset = args.dataset
 
     # specify checkpoint path depending on the type of finetuning
-    if args.peft_method is not None:
-        checkpoint_name = f"{args.model_type}/{args.peft_method}_{args.peft_rank}_{args.fact_dropout}/{dataset}_sam"
+    if args.checkpoint_name is not None:
+        checkpoint_name = args.checkpoint_name
+    elif args.peft_method is not None:
+        checkpoint_name = f"{args.model_type}/{args.peft_method}/{dataset}_sam"
     elif freeze_parts is not None:
         checkpoint_name = f"{args.model_type}/frozen_encoder/{dataset}_sam"
     else:
@@ -102,6 +104,12 @@ def main():
     )
     parser.add_argument(
         "--fact_dropout", type=float, default=None, help="The dropout rate to use for FacT."
+    )
+    parser.add_argument(
+        "--alpha", type=float, default=None, help="Scaling Factor for PEFT methods"
+    )
+    parser.add_argument(
+        "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"
     )
     args = parser.parse_args()
     finetune(args)

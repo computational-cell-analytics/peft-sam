@@ -9,7 +9,8 @@ ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitol
 
 
 def write_batch_script(
-    env_name, save_root, model_type, script_name, checkpoint_path, peft_rank, peft_method, dataset
+    env_name, save_root, model_type, script_name, checkpoint_path, checkpoint_name=None, dataset="livecell",
+    peft_rank=None, peft_method=None, alpha=None
 ):
     assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
 
@@ -42,6 +43,8 @@ source activate {env_name}
         python_script += f"--peft_rank {peft_rank} "
     if peft_method is not None:
         python_script += f"--peft_method {peft_method} "
+    if alpha is not None:
+        python_script += f"--alpha {alpha} "
     # let's add the python script to the bash script
     batch_script += python_script
     print(batch_script)
@@ -80,12 +83,14 @@ def run_rank_study():
             for base_model in ["vit_b", generalist_model]:
                 script_name = get_batch_script_names("./gpu_jobs")
                 peft_method = "lora" if rank is not None else None
+                checkpoint_name = f"{base_model}/lora/rank_{rank}/{dataset}_sam" if rank is not None else None
                 write_batch_script(
                     env_name="sam",
                     save_root=args.save_root,
                     model_type=base_model,
                     script_name=script_name,
                     checkpoint_path=None,
+                    checkpoint_name=checkpoint_name,
                     peft_rank=rank,
                     peft_method=peft_method,
                     dataset=dataset,
@@ -116,11 +121,45 @@ def run_all_dataset_ft():
             )
 
 
+def run_scaling_factor_exp(args):
+    """
+    Submit the finetuning jobs LoRA on LIVECell
+    - alpha in [1, 2, 4, 8, 16, 32, 64]
+    - rank in [1, 2, 4, 8, 16, 32, 64]
+    """
+    alphas = [1, 2, 4, 8, 16, 32, 64]
+    ranks = [1, 2, 4, 8, 16, 32, 64]
+
+    for alpha in alphas:
+        for rank in ranks:
+            # only consider those combinations where the ratio is within [0.25,8]
+            ratio = alpha / rank
+            if not (0.25 <= ratio <= 8):
+                continue
+            model = "vit_b"
+            script_name = get_batch_script_names("./gpu_jobs")
+            peft_method = "lora"
+            checkpoint_name = f"{model}/lora/rank_{rank}/alpha_{alpha}/livecell_sam"
+            write_batch_script(
+                env_name="sam",
+                save_root=args.save_root,
+                model_type=model,
+                script_name=script_name,
+                checkpoint_path=None,
+                peft_rank=rank,
+                peft_method=peft_method,
+                alpha=alpha,
+                checkpoint_name=checkpoint_name,
+                dataset="livecell",
+            )
+
+
 def main(args):
 
     switch = {
         'ft_all_data': run_all_dataset_ft,
-        'rank_study': run_rank_study
+        'rank_study': run_rank_study,
+        'scaling_factor': run_scaling_factor_exp
     }
 
     # Get the corresponding experiment function based on the argument and execute it
@@ -141,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
     parser.add_argument(
         '--experiment',
-        choices=['ft_all_data', 'rank_study'],
+        choices=['ft_all_data', 'rank_study', 'scaling_factor'],
         required=True,
         help="Specify which experiment to run"
     )
