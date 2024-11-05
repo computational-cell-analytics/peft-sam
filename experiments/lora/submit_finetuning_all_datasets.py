@@ -24,6 +24,7 @@ def write_batch_script(
 #SBATCH -G A100:1
 #SBATCH -A nim00007
 #SBATCH --constraint=80gb
+source /etc/profile
 source activate {env_name}
 """
 
@@ -35,6 +36,8 @@ source activate {env_name}
 
     if checkpoint_path is not None:
         python_script += f"-c {checkpoint_path} "
+    if checkpoint_name is not None:
+        python_script += f"--checkpoint_name {checkpoint_name} "
 
     if save_root is not None:
         python_script += f"-s {save_root} "  # path to save model checkpoints and logs

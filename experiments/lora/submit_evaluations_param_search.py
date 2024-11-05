@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 ALL_SCRIPTS = [
-    "evaluate_instance_segmenation", "iterative_prompting"
+    "evaluate_instance_segmentation", "iterative_prompting"
 ]
 # replace with experiment folder
 EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft_param_search"
@@ -28,6 +28,7 @@ def write_batch_script(
 #SBATCH --constraint=80gb
 #SBATCH --job-name={inference_setup}
 
+source /etc/profile
 source ~/.bashrc
 conda activate {env_name} \n"""
 
@@ -91,7 +92,6 @@ def get_batch_script_names(tmp_folder):
 def run_scaling_factor_exp():
     "Submit python script that needs gpus with given inputs on a slurm node."
     tmp_folder = "./gpu_jobs"
-    make_delay = "10s"  # wait for precomputing the embeddings and later run inference scripts
 
     ranks = [1, 2, 4]
     alphas = [1, 2, 4, 8, 16, 32, 64]
@@ -100,8 +100,8 @@ def run_scaling_factor_exp():
         for rank in ranks:
             # the checkpoints all have the format
             # checkpoints/<model_type>/lora/rank_<rank>/alpha_<alpha>/livecell_sam/best.pt
-            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b/lora/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
-            result_path = os.path.join(EXPERIMENT_ROOT, "lora", f"rank_{rank}", f"alpha_{alpha}")
+            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
+            result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", f"rank_{rank}", f"alpha_{alpha}")
             os.makedirs(result_path, exist_ok=True)
 
             for current_setup in ALL_SCRIPTS:
@@ -112,7 +112,7 @@ def run_scaling_factor_exp():
                     checkpoint=checkpoint_path,
                     model_type="vit_b_lm",
                     experiment_folder=result_path,
-                    delay=None if current_setup == "precompute_embeddings" else make_delay,
+                    delay=None,
                     peft_rank=rank,
                     peft_method="lora",
                     alpha=alpha
