@@ -93,9 +93,8 @@ def run_scaling_factor_exp():
     "Submit python script that needs gpus with given inputs on a slurm node."
     tmp_folder = "./gpu_jobs"
 
-    ranks = [1, 2, 4]
-    alphas = [1, 2, 4, 8, 16, 32, 64]
-
+    alphas = [1, 2, 4]
+    ranks = [1, 2, 4, 8, 16, 32, 64]
     for alpha in alphas:
         for rank in ranks:
             # the checkpoints all have the format
@@ -122,14 +121,14 @@ def run_scaling_factor_exp():
     for i, my_script in enumerate(sorted(glob(tmp_folder + "/*"))):
         cmd = ["sbatch", my_script]
 
-        if i > 0:
-            cmd.insert(1, f"--dependency=afterany:{job_id[0]}")
+        # if i > 0:
+        #     cmd.insert(1, f"--dependency=afterany:{job_id[0]}")
 
         cmd_out = subprocess.run(cmd, capture_output=True, text=True)
         print(cmd_out.stdout if len(cmd_out.stdout) > 1 else cmd_out.stderr)
 
-        if i == 0:
-            job_id.append(re.findall(r'\d+', cmd_out.stdout)[0])
+        # if i == 0:
+        #    job_id.append(re.findall(r'\d+', cmd_out.stdout)[0])
 
 
 def main(args):
