@@ -28,7 +28,6 @@ def write_batch_script(
 #SBATCH --constraint=80gb
 #SBATCH --job-name={inference_setup}
 
-source /etc/profile
 source ~/.bashrc
 conda activate {env_name} \n"""
 

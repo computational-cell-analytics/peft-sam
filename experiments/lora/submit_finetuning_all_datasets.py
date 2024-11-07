@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
+import itertools
 
 
 ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
@@ -10,7 +11,7 @@ ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitol
 
 def write_batch_script(
     env_name, save_root, model_type, script_name, checkpoint_path, checkpoint_name=None, dataset="livecell",
-    peft_rank=None, peft_method=None, alpha=None
+    peft_rank=None, peft_method=None, alpha=None, learning_rate=1e-5
 ):
     assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
 
@@ -48,6 +49,8 @@ source activate {env_name}
         python_script += f"--peft_method {peft_method} "
     if alpha is not None:
         python_script += f"--alpha {alpha} "
+    if learning_rate is not None:
+        python_script += f"--learning_rate {learning_rate} "
     # let's add the python script to the bash script
     batch_script += python_script
     print(batch_script)
@@ -124,34 +127,64 @@ def run_all_dataset_ft():
             )
 
 
-def run_scaling_factor_exp():
+def run_scaling_factor_exp_a():
     """
-    Submit the finetuning jobs LoRA on LIVECell
+    Submit the finetuning jobs LoRA on Orgasegment
     - alpha in [1, 2, 4]
     - rank in [1, 2, 4, 8, 16, 32, 64]
     """
     alphas = [1, 2, 4]
     ranks = [1, 2, 4, 8, 16, 32, 64]
+    
+    for alpha, rank in itertools.product(alphas, ranks):
+        model = "vit_b_lm"
+        script_name = get_batch_script_names("./gpu_jobs")
+        peft_method = "lora"
+        checkpoint_name = f"{model}/lora/lr_1e-5/rank_{rank}/alpha_{alpha}/orgasegment_sam"
+        write_batch_script(
+            env_name="sam",
+            save_root=args.save_root,
+            model_type=model,
+            script_name=script_name,
+            checkpoint_path=None,
+            peft_rank=rank,
+            peft_method=peft_method,
+            alpha=alpha,
+            checkpoint_name=checkpoint_name,
+            dataset="orgasegment",
+        )
 
-    for alpha in alphas:
-        for rank in ranks:
-            # only consider those combinations where the ratio is within [0.25,8]
-            model = "vit_b_lm"
-            script_name = get_batch_script_names("./gpu_jobs")
-            peft_method = "lora"
-            checkpoint_name = f"{model}/lora/rank_{rank}/alpha_{alpha}/orgasegment_sam"
-            write_batch_script(
-                env_name="sam",
-                save_root=args.save_root,
-                model_type=model,
-                script_name=script_name,
-                checkpoint_path=None,
-                peft_rank=rank,
-                peft_method=peft_method,
-                alpha=alpha,
-                checkpoint_name=checkpoint_name,
-                dataset="orgasegment",
-            )
+
+def run_scaling_factor_exp_b():
+    """
+    Submit the finetuning jobs LoRA on OrgaSegment
+    - alpha in [1, 2, 4]
+    - rank in [1, 32]
+    - learning rate in [1e-3, 5e-4, 1e-4, 5e-5]
+    """
+    alphas = [1, 2, 4]
+    ranks = [1, 32]
+    lrs = [1e-3, 5e-4, 1e-4, 5e-5]
+
+    for alpha, rank, lr in itertools.product(alphas, ranks, lrs):
+        model = "vit_b_lm"
+        script_name = get_batch_script_names("./gpu_jobs")
+        peft_method = "lora"
+        checkpoint_name = f"{model}/lora/lr_{lr}/rank_{rank}/alpha_{alpha}/orgasegment_sam"
+        write_batch_script(
+            env_name="sam",
+            save_root=args.save_root,
+            model_type=model,
+            script_name=script_name,
+            checkpoint_path=None,
+            peft_rank=rank,
+            peft_method=peft_method,
+            alpha=alpha,
+            checkpoint_name=checkpoint_name,
+            dataset="orgasegment",
+            learning_rate=lr
+        )
+
 
 
 def main(args):
@@ -159,7 +192,8 @@ def main(args):
     switch = {
         'ft_all_data': run_all_dataset_ft,
         'rank_study': run_rank_study,
-        'scaling_factor': run_scaling_factor_exp
+        'scaling_factor_a': run_scaling_factor_exp_a,
+        'scaling_factor_b': run_scaling_factor_exp_b
     }
 
     # Get the corresponding experiment function based on the argument and execute it
@@ -180,7 +214,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
     parser.add_argument(
         '--experiment',
-        choices=['ft_all_data', 'rank_study', 'scaling_factor'],
+        choices=['ft_all_data', 'rank_study', 'scaling_factor_a', 'scaling_factor_b'],
         required=True,
         help="Specify which experiment to run"
     )

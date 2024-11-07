@@ -37,7 +37,7 @@ def finetune(args):
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method, args.fact_dropout)
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method, alpha=args.alpha, fact_dropout=args.fact_dropout)
 
     # Run training.
     sam_training.train_sam(
@@ -50,7 +50,7 @@ def finetune(args):
         checkpoint_path=checkpoint_path,
         freeze=freeze_parts,
         device=device,
-        lr=1e-5,
+        lr=args.learning_rate,
         n_iterations=50000,
         save_root=args.save_root,
         scheduler_kwargs=scheduler_kwargs,
@@ -95,6 +95,9 @@ def main():
     parser.add_argument(
         "--input_path", "-i", type=str, default="/scratch/usr/nimcarot/data",
         help="Specifies the path to the data directory (set to ./data if dataset is at ./data/<dataset_name>)"
+    )
+    parser.add_argument(
+        "--learning_rate", type=float, default=1e-5, help="The learning rate for finetuning."
     )
     parser.add_argument(
         "--peft_rank", type=int, default=None, help="The rank for peft training."
