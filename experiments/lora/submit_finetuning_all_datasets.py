@@ -162,9 +162,9 @@ def run_scaling_factor_exp_b(args):
     - rank in [1, 32]
     - learning rate in [1e-3, 5e-4, 1e-4, 5e-5]
     """
-    alphas = [0.5, 1, 2, 4]
+    alphas = [1, 2, 4]
     ranks = [1, 32]
-    lrs = [1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
+    lrs = [1e-3, 5e-4, 1e-4, 5e-5]
 
     for alpha, rank, lr in itertools.product(alphas, ranks, lrs):
         model = "vit_b_lm"
@@ -187,6 +187,36 @@ def run_scaling_factor_exp_b(args):
             learning_rate=lr
         )
 
+def run_scaling_factor_exp_c(args):
+    """
+    Submit the finetuning jobs LoRA on OrgaSegment
+    - alpha in [0.1, 0.25, 0.5, 0.75]
+    - learning rate = 1e-5
+    """
+    alphas = [0.1, 0.25, 0.5, 0.75]
+    rank = 32
+    lr = 1e-5
+
+    for alpha in alphas:
+        model = "vit_b_lm"
+        script_name = get_batch_script_names("./gpu_jobs")
+        peft_method = "lora"
+        checkpoint_name = f"{model}/lora/lr_{lr}/rank_{rank}/alpha_{alpha}/orgasegment_sam"
+        if os.path.exists(os.path.join(args.save_root, "checkpoints", checkpoint_name)):
+            continue
+        write_batch_script(
+            env_name="sam",
+            save_root=args.save_root,
+            model_type=model,
+            script_name=script_name,
+            checkpoint_path=None,
+            peft_rank=rank,
+            peft_method=peft_method,
+            alpha=alpha,
+            checkpoint_name=checkpoint_name,
+            dataset="orgasegment",
+            learning_rate=lr
+        )
 
 
 def main(args):
@@ -195,7 +225,8 @@ def main(args):
         'ft_all_data': run_all_dataset_ft,
         'rank_study': run_rank_study,
         'scaling_factor_a': run_scaling_factor_exp_a,
-        'scaling_factor_b': run_scaling_factor_exp_b
+        'scaling_factor_b': run_scaling_factor_exp_b,
+        'scaling_factor_c': run_scaling_factor_exp_c
     }
 
     # Get the corresponding experiment function based on the argument and execute it
@@ -216,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
     parser.add_argument(
         '--experiment',
-        choices=['ft_all_data', 'rank_study', 'scaling_factor_a', 'scaling_factor_b'],
+        choices=['ft_all_data', 'rank_study', 'scaling_factor_a', 'scaling_factor_b', 'scaling_factor_c'],
         required=True,
         help="Specify which experiment to run"
     )
