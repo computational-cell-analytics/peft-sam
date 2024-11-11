@@ -164,7 +164,7 @@ def run_scaling_factor_exp_b(args):
     """
     alphas = [0.5, 1, 2, 4]
     ranks = [1, 32]
-    lrs = [1e-3, 5e-4, 1e-4, 5e-5, 1e-6]
+    lrs = [1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
 
     for alpha, rank, lr in itertools.product(alphas, ranks, lrs):
         model = "vit_b_lm"
