@@ -155,22 +155,24 @@ def run_scaling_factor_exp_a():
         )
 
 
-def run_scaling_factor_exp_b():
+def run_scaling_factor_exp_b(args):
     """
     Submit the finetuning jobs LoRA on OrgaSegment
     - alpha in [1, 2, 4]
     - rank in [1, 32]
     - learning rate in [1e-3, 5e-4, 1e-4, 5e-5]
     """
-    alphas = [1, 2, 4]
+    alphas = [0.5, 1, 2, 4]
     ranks = [1, 32]
-    lrs = [1e-3, 5e-4, 1e-4, 5e-5]
+    lrs = [1e-3, 5e-4, 1e-4, 5e-5, 1e-6]
 
     for alpha, rank, lr in itertools.product(alphas, ranks, lrs):
         model = "vit_b_lm"
         script_name = get_batch_script_names("./gpu_jobs")
         peft_method = "lora"
         checkpoint_name = f"{model}/lora/lr_{lr}/rank_{rank}/alpha_{alpha}/orgasegment_sam"
+        if os.path.exists(os.path.join(args.save_root, "checkpoints", checkpoint_name)):
+            continue
         write_batch_script(
             env_name="sam",
             save_root=args.save_root,
@@ -200,7 +202,7 @@ def main(args):
     experiment_function = switch.get(args.experiment)
 
     # Run the selected experiment
-    experiment_function()
+    experiment_function(args)
 
 
 if __name__ == "__main__":

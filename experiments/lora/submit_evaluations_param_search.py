@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from glob import glob
 from datetime import datetime
+import itertools
 
 
 ALL_SCRIPTS = [
@@ -61,7 +62,7 @@ conda activate {env_name} \n"""
 
     # let's add the python script to the bash script
     batch_script += python_script
-    if inference_setup == "precompute_embeddings":
+    if inference_setup == "evaluate_instance_segmentation":
         print(batch_script)
     with open(_op, "w") as f:
         f.write(batch_script)
@@ -88,7 +89,7 @@ def get_batch_script_names(tmp_folder):
     return batch_script
 
 
-def run_scaling_factor_exp():
+def run_scaling_factor_exp_a():
     "Submit python script that needs gpus with given inputs on a slurm node."
     tmp_folder = "./gpu_jobs"
 
@@ -98,8 +99,8 @@ def run_scaling_factor_exp():
         for rank in ranks:
             # the checkpoints all have the format
             # checkpoints/<model_type>/lora/rank_<rank>/alpha_<alpha>/livecell_sam/best.pt
-            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
-            result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", f"rank_{rank}", f"alpha_{alpha}")
+            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/lr_1e-5/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
+            result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", "lr_1e-5", f"rank_{rank}", f"alpha_{alpha}")
             os.makedirs(result_path, exist_ok=True)
 
             for current_setup in ALL_SCRIPTS:
@@ -129,11 +130,54 @@ def run_scaling_factor_exp():
         # if i == 0:
         #    job_id.append(re.findall(r'\d+', cmd_out.stdout)[0])
 
+def run_scaling_factor_exp_b():
+    "Submit python script that needs gpus with given inputs on a slurm node."
+    tmp_folder = "./gpu_jobs"
+
+    alphas = [1, 2, 4]
+    ranks = [1, 32]
+    lrs = [1e-3, 5e-4, 1e-4, 5e-5]
+
+    for alpha, rank, lr in itertools.product(alphas, ranks, lrs):
+        # the checkpoints all have the format
+        # checkpoints/<model_type>/lora/rank_<rank>/alpha_<alpha>/livecell_sam/best.pt
+        checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/lr_{lr}/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
+        result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", f"lr_{lr}", f"rank_{rank}", f"alpha_{alpha}")
+        os.makedirs(result_path, exist_ok=True)
+
+        for current_setup in ALL_SCRIPTS:
+            write_batch_script(
+                env_name="sam",
+                out_path=get_batch_script_names(tmp_folder),
+                inference_setup=current_setup,
+                checkpoint=checkpoint_path,
+                model_type="vit_b_lm",
+                experiment_folder=result_path,
+                delay=None,
+                peft_rank=rank,
+                peft_method="lora",
+                alpha=alpha
+            )
+
+    job_id = []
+    for i, my_script in enumerate(sorted(glob(tmp_folder + "/*"))):
+        cmd = ["sbatch", my_script]
+
+        # if i > 0:
+        #     cmd.insert(1, f"--dependency=afterany:{job_id[0]}")
+
+        cmd_out = subprocess.run(cmd, capture_output=True, text=True)
+        print(cmd_out.stdout if len(cmd_out.stdout) > 1 else cmd_out.stderr)
+
+        # if i == 0:
+        #    job_id.append(re.findall(r'\d+', cmd_out.stdout)[0])
+
 
 def main(args):
 
     switch = {
-        'scaling_factor': run_scaling_factor_exp,
+        'scaling_factor_a': run_scaling_factor_exp_a,
+        'scaling_factor_b': run_scaling_factor_exp_b,
     }
 
     # Get the corresponding experiment function based on the argument and execute it
@@ -154,7 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
     parser.add_argument(
         '--experiment',
-        choices=['scaling_factor'],
+        choices=['scaling_factor_a', 'scaling_factor_b'],
         required=True,
         help="Specify which experiment to run"
     )
