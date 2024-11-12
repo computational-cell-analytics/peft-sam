@@ -199,6 +199,7 @@ def main(args):
     switch = {
         'scaling_factor_a': run_scaling_factor_exp_a,
         'scaling_factor_b': run_scaling_factor_exp_b,
+        'scaling_factor_c': run_scaling_factor_exp_c,
     }
 
     # Get the corresponding experiment function based on the argument and execute it
@@ -219,7 +220,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
     parser.add_argument(
         '--experiment',
-        choices=['scaling_factor_a', 'scaling_factor_b'],
+        choices=['scaling_factor_a', 'scaling_factor_b', 'scaling_factor_c'],
         required=True,
         help="Specify which experiment to run"
     )
