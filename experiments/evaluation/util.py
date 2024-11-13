@@ -108,7 +108,7 @@ def get_default_arguments():
     )
     parser.add_argument("--peft_rank", default=None, type=int, help="The rank for peft method.")
     parser.add_argument("--peft_module", default=None, type=str, help="The module for peft method. (e.g. LoRA or FacT)")
-    parser.add_argument("--fact_dropout", default=None, type=float, help="The dropout factor for FacT finetuning")
+    parser.add_argument("--dropout", default=None, type=float, help="The dropout factor for FacT finetuning")
     parser.add_argument(
         "--alpha", default=None, type=float, help="Scaling factor for peft method. (e.g. LoRA or AdaptFormer)"
     )

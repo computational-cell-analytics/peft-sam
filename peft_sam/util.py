@@ -48,7 +48,7 @@ class RawTrafo:
         return raw
 
 
-def get_peft_kwargs(peft_rank, peft_module, fact_dropout=None, alpha=1):
+def get_peft_kwargs(peft_rank, peft_module, dropout=None, alpha=1):
     if peft_module is None:
         peft_kwargs = None
     else:
@@ -59,6 +59,6 @@ def get_peft_kwargs(peft_rank, peft_module, fact_dropout=None, alpha=1):
             peft_kwargs = {"rank": peft_rank, "peft_module": module, "alpha": alpha}
         elif peft_module == 'fact':
             module = FacTSurgery
-            peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": fact_dropout}
+            peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout}
 
     return peft_kwargs

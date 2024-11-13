@@ -37,7 +37,7 @@ def eval_instance_segmentation_with_decoder(dataset_name, prediction_folder, exp
 def main():
     args = get_default_arguments()
 
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module, args.fact_dropout)
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module, alpha=args.alpha, dropout=args.dropout)
 
     prediction_folder = run_instance_segmentation_with_decoder_inference(
         args.dataset, args.model, args.checkpoint, args.experiment_folder, peft_kwargs,
