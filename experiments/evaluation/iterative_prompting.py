@@ -42,8 +42,13 @@ def main():
 
     start_with_box_prompt = args.box  # overwrite to start first iters' prompt with box instead of single point
 
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module, args.fact_dropout)
-
+    peft_kwargs = get_peft_kwargs(
+        args.peft_rank,
+        args.peft_module,
+        alpha=args.alpha,
+        dropout=args.dropout,
+        projection_size=args.projection_size
+    )
     # get the predictor to perform inference
     predictor = get_sam_model(model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs)
 

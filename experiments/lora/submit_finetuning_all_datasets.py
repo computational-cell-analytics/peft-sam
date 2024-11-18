@@ -135,7 +135,7 @@ def run_scaling_factor_exp_a():
     """
     alphas = [1, 2, 4]
     ranks = [1, 2, 4, 8, 16, 32, 64]
-    
+
     for alpha, rank in itertools.product(alphas, ranks):
         model = "vit_b_lm"
         script_name = get_batch_script_names("./gpu_jobs")
@@ -186,6 +186,7 @@ def run_scaling_factor_exp_b(args):
             dataset="orgasegment",
             learning_rate=lr
         )
+
 
 def run_scaling_factor_exp_c(args):
     """

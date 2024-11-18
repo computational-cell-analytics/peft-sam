@@ -311,11 +311,7 @@ def for_orgasegment(save_path):
         for i, (image_path, label_path) in enumerate(zip(volumes[vol*2], volumes[vol*2+1])):
             _split = "test" if "eval" in str(image_path) else "val"
             image = imageio.imread(image_path)
-            img_shape = image.shape
             label = imageio.imread(label_path)
-
-            if len(img_shape) == 2:
-                image = np.stack([image, image, image], axis=2)
 
             imageio.imwrite(os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}.tif"), image)
             imageio.imwrite(os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}.tif"), label)

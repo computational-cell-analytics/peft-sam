@@ -1,4 +1,3 @@
-import re
 import os
 import shutil
 import subprocess
@@ -99,8 +98,8 @@ def run_scaling_factor_exp_a():
         for rank in ranks:
             # the checkpoints all have the format
             # checkpoints/<model_type>/lora/rank_<rank>/alpha_<alpha>/livecell_sam/best.pt
-            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/lr_1e-5/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
-            result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", "lr_1e-5", f"rank_{rank}", f"alpha_{alpha}")
+            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/lr_1e-05/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
+            result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", "lr_1e-05", f"rank_{rank}", f"alpha_{alpha}")
             os.makedirs(result_path, exist_ok=True)
 
             for current_setup in ALL_SCRIPTS:
@@ -122,6 +121,7 @@ def run_scaling_factor_exp_a():
 
         cmd_out = subprocess.run(cmd, capture_output=True, text=True)
         print(cmd_out.stdout if len(cmd_out.stdout) > 1 else cmd_out.stderr)
+
 
 def run_scaling_factor_exp_b():
     "Submit python script that needs gpus with given inputs on a slurm node."
@@ -163,7 +163,7 @@ def run_scaling_factor_exp_c():
     "Submit python script that needs gpus with given inputs on a slurm node."
     tmp_folder = "./gpu_jobs"
 
-    alphas = [0.25, 0.5, 0.75]
+    alphas = [0.1, 0.25, 0.5, 0.75]
     rank = 32
     lr = 1e-5
 
@@ -173,7 +173,6 @@ def run_scaling_factor_exp_c():
         checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/lr_{lr}/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
         result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", f"lr_{lr}", f"rank_{rank}", f"alpha_{alpha}")
         os.makedirs(result_path, exist_ok=True)
-
         for current_setup in ALL_SCRIPTS:
             write_batch_script(
                 env_name="sam",
@@ -194,19 +193,22 @@ def run_scaling_factor_exp_c():
         cmd_out = subprocess.run(cmd, capture_output=True, text=True)
         print(cmd_out.stdout if len(cmd_out.stdout) > 1 else cmd_out.stderr)
 
-def main(args):
 
+def main(args):
+    # Define the mapping of experiments to their corresponding functions
     switch = {
         'scaling_factor_a': run_scaling_factor_exp_a,
         'scaling_factor_b': run_scaling_factor_exp_b,
         'scaling_factor_c': run_scaling_factor_exp_c,
     }
 
-    # Get the corresponding experiment function based on the argument and execute it
-    experiment_function = switch.get(args.experiment)
-
-    # Run the selected experiment
-    experiment_function()
+    # Iterate over the list of experiments and execute them
+    for experiment in args.experiments:
+        experiment_function = switch.get(experiment)
+        if experiment_function:
+            experiment_function()
+        else:
+            print(f"Experiment {experiment} not recognized.")
 
 
 if __name__ == "__main__":
@@ -215,14 +217,21 @@ if __name__ == "__main__":
     except FileNotFoundError:
         pass
 
+    # Set up argument parsing
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--save_root", type=str, default=None, help="Path to save checkpoints.")
     parser.add_argument(
-        '--experiment',
+        "-s", "--save_root",
+        type=str,
+        default=None,
+        help="Path to save checkpoints."
+    )
+    parser.add_argument(
+        '--experiments',
+        nargs='+',  # Allow multiple values to be passed as a list
         choices=['scaling_factor_a', 'scaling_factor_b', 'scaling_factor_c'],
         required=True,
-        help="Specify which experiment to run"
+        help="Specify which experiments to run (space-separated list)"
     )
 
     args = parser.parse_args()

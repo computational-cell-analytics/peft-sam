@@ -37,7 +37,8 @@ def finetune(args):
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method, alpha=args.alpha, fact_dropout=args.fact_dropout)
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method, alpha=args.alpha, dropout=args.dropout)
+    print("PEFT arguments: ", peft_kwargs)
 
     # Run training.
     sam_training.train_sam(
@@ -103,13 +104,16 @@ def main():
         "--peft_rank", type=int, default=None, help="The rank for peft training."
     )
     parser.add_argument(
-        "--peft_method", type=str, default=None, help="The method to use for PEFT. Either 'lora' or 'fact'."
+        "--peft_method", type=str, default=None, help="The method to use for PEFT."
     )
     parser.add_argument(
-        "--fact_dropout", type=float, default=None, help="The dropout rate to use for FacT."
+        "--dropout", type=float, default=None, help="The dropout rate to use for FacT and AdaptFormer."
     )
     parser.add_argument(
-        "--alpha", type=float, default=None, help="Scaling Factor for PEFT methods"
+        "--alpha", default=None, help="Scaling Factor for PEFT methods"
+    )
+    parser.add_argument(
+        "--projection_size", type=int, default=None, help="Projection size for Adaptformer"
     )
     parser.add_argument(
         "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"
