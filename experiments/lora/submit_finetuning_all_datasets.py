@@ -25,7 +25,6 @@ def write_batch_script(
 #SBATCH -G A100:1
 #SBATCH -A nim00007
 #SBATCH --constraint=80gb
-source /etc/profile
 source activate {env_name}
 """
 
