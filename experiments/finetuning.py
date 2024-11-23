@@ -23,8 +23,10 @@ def finetune(args):
     dataset = args.dataset
 
     # specify checkpoint path depending on the type of finetuning
-    if args.peft_method is not None:
-        checkpoint_name = f"{args.model_type}/{args.peft_method}_{args.peft_rank}_{args.fact_dropout}/{dataset}_sam"
+    if args.checkpoint_name is not None:
+        checkpoint_name = args.checkpoint_name
+    elif args.peft_method is not None:
+        checkpoint_name = f"{args.model_type}/{args.peft_method}/{dataset}_sam"
     elif freeze_parts is not None:
         checkpoint_name = f"{args.model_type}/frozen_encoder/{dataset}_sam"
     else:
@@ -35,7 +37,8 @@ def finetune(args):
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method, args.fact_dropout)
+    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_method, alpha=args.alpha, dropout=args.dropout)
+    print("PEFT arguments: ", peft_kwargs)
 
     # Run training.
     sam_training.train_sam(
@@ -48,7 +51,7 @@ def finetune(args):
         checkpoint_path=checkpoint_path,
         freeze=freeze_parts,
         device=device,
-        lr=1e-5,
+        lr=args.learning_rate,
         n_iterations=50000,
         save_root=args.save_root,
         scheduler_kwargs=scheduler_kwargs,
@@ -95,13 +98,25 @@ def main():
         help="Specifies the path to the data directory (set to ./data if dataset is at ./data/<dataset_name>)"
     )
     parser.add_argument(
+        "--learning_rate", type=float, default=1e-5, help="The learning rate for finetuning."
+    )
+    parser.add_argument(
         "--peft_rank", type=int, default=None, help="The rank for peft training."
     )
     parser.add_argument(
-        "--peft_method", type=str, default=None, help="The method to use for PEFT. Either 'lora' or 'fact'."
+        "--peft_method", type=str, default=None, help="The method to use for PEFT."
     )
     parser.add_argument(
-        "--fact_dropout", type=float, default=None, help="The dropout rate to use for FacT."
+        "--dropout", type=float, default=None, help="The dropout rate to use for FacT and AdaptFormer."
+    )
+    parser.add_argument(
+        "--alpha", default=None, help="Scaling Factor for PEFT methods"
+    )
+    parser.add_argument(
+        "--projection_size", type=int, default=None, help="Projection size for Adaptformer"
+    )
+    parser.add_argument(
+        "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"
     )
     args = parser.parse_args()
     finetune(args)

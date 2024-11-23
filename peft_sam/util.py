@@ -5,6 +5,7 @@ from torch_em.transform.raw import normalize
 
 EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/"
 
+
 class RawTrafo:
     """
     Transforms raw data
@@ -47,7 +48,7 @@ class RawTrafo:
         return raw
 
 
-def get_peft_kwargs(peft_rank, peft_module, fact_dropout=None):
+def get_peft_kwargs(peft_rank, peft_module, dropout=None, alpha=None, projection_size=None):
     if peft_module is None:
         peft_kwargs = None
     else:
@@ -55,8 +56,8 @@ def get_peft_kwargs(peft_rank, peft_module, fact_dropout=None):
         from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
         if peft_module == 'lora':
             module = LoRASurgery
+            peft_kwargs = {"rank": peft_rank, "peft_module": module, "alpha": alpha}
         elif peft_module == 'fact':
             module = FacTSurgery
-        peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": fact_dropout}
-
+            peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout}
     return peft_kwargs

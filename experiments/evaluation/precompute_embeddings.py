@@ -11,7 +11,13 @@ from peft_sam.util import get_peft_kwargs
 def main():
     args = get_default_arguments()
 
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module, args.fact_dropout)
+    peft_kwargs = get_peft_kwargs(
+        args.peft_rank,
+        args.peft_module,
+        alpha=args.alpha,
+        dropout=args.dropout,
+        projeciton_size=args.projection_size
+    )
 
     predictor = get_sam_model(
         model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs,

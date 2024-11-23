@@ -34,7 +34,13 @@ def eval_amg(dataset_name, prediction_folder, experiment_folder):
 
 def main():
     args = get_default_arguments()
-    peft_kwargs = get_peft_kwargs(args.peft_rank, args.peft_module, args.fact_dropout)
+    peft_kwargs = get_peft_kwargs(
+        args.peft_rank,
+        args.peft_module,
+        alpha=args.alpha,
+        dropout=args.dropout,
+        projection_size=args.projection_size
+    )
     prediction_folder = run_amg_inference(
         args.dataset, args.model, args.checkpoint, args.experiment_folder, peft_kwargs
     )
