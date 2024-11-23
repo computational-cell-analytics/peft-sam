@@ -53,20 +53,11 @@ def get_peft_kwargs(peft_rank, peft_module, dropout=None, alpha=None, projection
         peft_kwargs = None
     else:
         assert peft_rank is not None, "Missing rank for peft finetuning."
-        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery, AdaptFormer
+        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
         if peft_module == 'lora':
             module = LoRASurgery
             peft_kwargs = {"rank": peft_rank, "peft_module": module, "alpha": alpha}
         elif peft_module == 'fact':
             module = FacTSurgery
             peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout}
-        elif peft_module == 'adaptformer':
-            module = AdaptFormer
-            peft_kwargs = {
-                "rank": peft_rank,
-                "peft_module": module,
-                "dropout": dropout,
-                "alpha": alpha,
-                "projection_size": projection_size
-            }
     return peft_kwargs
