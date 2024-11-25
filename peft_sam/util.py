@@ -56,7 +56,7 @@ def get_peft_kwargs(peft_rank, peft_module, dropout=None, alpha=None, projection
         from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
         if peft_module == 'lora':
             module = LoRASurgery
-            peft_kwargs = {"rank": peft_rank, "peft_module": module, "alpha": alpha}
+            peft_kwargs = {"rank": peft_rank, "peft_module": module, "alpha": float(alpha)}
         elif peft_module == 'fact':
             module = FacTSurgery
             peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout}
