@@ -163,29 +163,28 @@ def run_scaling_factor_exp_c():
     "Submit python script that needs gpus with given inputs on a slurm node."
     tmp_folder = "./gpu_jobs"
 
-    alphas = [0.1, 0.25, 0.5, 0.75]
+    alphas = [0.1, 0.25, 0.5, 0.75, 8]
     rank = 32
     lr = 1e-5
 
     for alpha in alphas:
-        # the checkpoints all have the format
-        # checkpoints/<model_type>/lora/rank_<rank>/alpha_<alpha>/orgasegment_sam/best.pt
-        checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/vit_b_lm/lora/lr_{lr}/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
-        result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", f"lr_{lr}", f"rank_{rank}", f"alpha_{alpha}")
-        os.makedirs(result_path, exist_ok=True)
-        for current_setup in ALL_SCRIPTS:
-            write_batch_script(
-                env_name="sam",
-                out_path=get_batch_script_names(tmp_folder),
-                inference_setup=current_setup,
-                checkpoint=checkpoint_path,
-                model_type="vit_b_lm",
-                experiment_folder=result_path,
-                delay=None,
-                peft_rank=rank,
-                peft_method="lora",
-                alpha=alpha
-            )
+        for model in ["vit_b", "vit_b_lm"]:
+            checkpoint_path = f"{EXPERIMENT_ROOT}/checkpoints/{model}/lora/lr_{lr}/rank_{rank}/alpha_{alpha}/orgasegment_sam/best.pt"
+            result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", f"{model}", f"lr_{lr}", f"rank_{rank}", f"alpha_{alpha}")
+            os.makedirs(result_path, exist_ok=True)
+            for current_setup in ALL_SCRIPTS:
+                write_batch_script(
+                    env_name="sam",
+                    out_path=get_batch_script_names(tmp_folder),
+                    inference_setup=current_setup,
+                    checkpoint=checkpoint_path,
+                    model_type=model,
+                    experiment_folder=result_path,
+                    delay=None,
+                    peft_rank=rank,
+                    peft_method="lora",
+                    alpha=alpha
+                )
 
     for i, my_script in enumerate(sorted(glob(tmp_folder + "/*"))):
         cmd = ["sbatch", my_script]
