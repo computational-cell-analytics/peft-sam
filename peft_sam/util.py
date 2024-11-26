@@ -60,4 +60,12 @@ def get_peft_kwargs(peft_rank, peft_module, dropout=None, alpha=None, projection
         elif peft_module == 'fact':
             module = FacTSurgery
             peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout}
+        elif peft_module == 'adaptformer':
+            from micro_sam.models.peft_sam import AdaptFormer
+            module = AdaptFormer
+            if alpha != 'learnable_scalar':
+                alpha = float(alpha)
+            peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout, "alpha": alpha,
+                           "projection_size": projection_size}
+
     return peft_kwargs
