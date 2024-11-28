@@ -131,7 +131,7 @@ def for_covid_if(save_path):
         image_id = Path(image_path).stem
 
         image_save_dir = os.path.join(save_path, "val", "raw")
-        label_save_dir = os.path.join(save_path, "slices", "val", "labels")
+        label_save_dir = os.path.join(save_path, "val", "labels")
 
         os.makedirs(image_save_dir, exist_ok=True)
         os.makedirs(label_save_dir, exist_ok=True)
@@ -139,6 +139,9 @@ def for_covid_if(save_path):
         with h5py.File(image_path, "r") as f:
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
+
+            raw = normalize(raw)
+            raw = raw * 255
 
             imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
             imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
@@ -147,8 +150,8 @@ def for_covid_if(save_path):
     for image_path in tqdm(all_image_paths[13:]):
         image_id = Path(image_path).stem
 
-        image_save_dir = os.path.join(Path(image_path).parent, "slices", "test", "raw")
-        label_save_dir = os.path.join(Path(image_path).parent, "slices", "test", "labels")
+        image_save_dir = os.path.join(save_path, "test", "raw")
+        label_save_dir = os.path.join(save_path, "test", "labels")
 
         os.makedirs(image_save_dir, exist_ok=True)
         os.makedirs(label_save_dir, exist_ok=True)
@@ -156,6 +159,9 @@ def for_covid_if(save_path):
         with h5py.File(image_path, "r") as f:
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
+
+            raw = normalize(raw)
+            raw = raw * 255
 
             imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
             imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
@@ -357,10 +363,10 @@ def main():
     download_all_datasets(ROOT)
 
     preprocess_data("covid_if")
-    preprocess_data("platynereis")
-    preprocess_data("mitolab")
-    preprocess_data("orgasegment")
-    preprocess_data("gonuclear")
+    # preprocess_data("platynereis")
+    # preprocess_data("mitolab")
+    # preprocess_data("orgasegment")
+    # preprocess_data("gonuclear")
 
 
 if __name__ == "__main__":

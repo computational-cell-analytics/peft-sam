@@ -59,6 +59,12 @@ conda activate {env_name} \n"""
     python_script += f"-e {experiment_folder} "
 
     # IMPORTANT: choice of the dataset
+
+    if dataset == "platy_cilia":
+        dataset = "platynereis/cilia"
+    elif dataset == "mitolab_glycolytic_muscle":
+        dataset = "mitolab/glycolytic_muscle"
+
     python_script += f"-d {dataset} "
 
     if peft_rank is not None:
@@ -77,7 +83,7 @@ conda activate {env_name} \n"""
     with open(_op, "w") as f:
         f.write(batch_script)
 
-    cmd = ["sbatch", out_path]
+    cmd = ["sbatch", _op]
     subprocess.run(cmd)
     # we run the first prompt for iterative once starting with point, and then starting with box (below)
     if inference_setup == "iterative_prompting":
@@ -87,8 +93,8 @@ conda activate {env_name} \n"""
         with open(new_path, "w") as f:
             f.write(batch_script)
 
-    cmd = ["sbatch", new_path]
-    subprocess.run(cmd)
+        cmd = ["sbatch", new_path]
+        subprocess.run(cmd)
 
 
 def get_batch_script_names(tmp_folder):
@@ -148,7 +154,7 @@ def run_lora_eval_b():
         checkpoint_path = os.path.join(EXPERIMENT_ROOT, checkpoint_name, 'orgasegment_sam', 'best.pt')
         result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", "vit_b_lm", f"lr_{lr}", f"rank_{rank}", f"alpha_{alpha}")
 
-        if os.path.exits(result_path):
+        if os.path.exists(result_path):
             print("Warning: The result path already exists")
 
         os.makedirs(result_path, exist_ok=True)
@@ -181,7 +187,7 @@ def run_lora_eval_c():
         checkpoint_path = os.path.join(EXPERIMENT_ROOT, checkpoint_name, 'orgasegment_sam', 'best.pt')
         result_path = os.path.join(EXPERIMENT_ROOT, "lora", "orgasegment", "vit_b_lm", f"lr_{lr}", f"rank_{rank}", f"alpha_{alpha}")
 
-        if os.path.exits(result_path):
+        if os.path.exists(result_path):
             print("Warning: The result path already exists")
 
         os.makedirs(result_path, exist_ok=True)
@@ -210,7 +216,7 @@ def run_lora_eval_d():
     lr = 1e-5
     datasets = ["orgasegment", "covid_if", "mitolab_glycolytic_muscle", "platy_cilia"]
 
-    for alpha, dataset in itertools.product(alphas, datasets):
+    for dataset, alpha in itertools.product(datasets, alphas):
         preprocess_data(dataset)
         if dataset in ["orgasegment", "covid_if"]:
             generalist = "vit_b_lm"
@@ -219,11 +225,15 @@ def run_lora_eval_d():
 
         for model in ["vit_b", generalist]:
             checkpoint_name = os.path.join(f'{model}', 'lora', f'lr_{lr}', f'rank_{rank}', f'alpha_{alpha}')
-            checkpoint_path = os.path.join(EXPERIMENT_ROOT, checkpoint_name, f'{dataset}_sam', 'best.pt')
+            checkpoint_path = os.path.join(EXPERIMENT_ROOT, 'checkpoints', checkpoint_name, f'{dataset}_sam', 'best.pt')
+
+            assert os.path.exists(checkpoint_path), "Wrong checkpoint path"
+
             result_path = os.path.join(EXPERIMENT_ROOT, "lora", f"{dataset}", f"{model}", f"lr_{lr}", f"rank_{rank}", f"alpha_{alpha}")
 
-            if os.path.exits(result_path):
+            if os.path.exists(result_path):
                 print("Warning: The result path already exists")
+                continue
 
             os.makedirs(result_path, exist_ok=True)
 
@@ -235,7 +245,7 @@ def run_lora_eval_d():
                     checkpoint=checkpoint_path,
                     model_type="vit_b_lm",
                     experiment_folder=result_path,
-                    dataset="orgasegment",
+                    dataset=dataset,
                     peft_rank=rank,
                     peft_method="lora",
                     alpha=alpha
@@ -246,7 +256,7 @@ def run_adaptformer_eval():
     "Submit python script that needs gpus with given inputs on a slurm node."
     tmp_folder = "./gpu_jobs"
 
-    alphas = [0.1, 0.25, 0.5, 1, 'learnable_scalar']
+    alphas = [0.1, 0.5, 1, 'learnable_scalar']
     proj_sizes = [64, 128, 256]
     dropouts = [0.1, 0.25, 0.5, None]
 
@@ -254,19 +264,26 @@ def run_adaptformer_eval():
         model = "vit_b_lm"
         peft_method = "adaptformer"
         rank = 1
-        checkpoint_name = f"{model}/{peft_method}/alpha_{alpha}/projection_size{proj_size}/dropout_{dropout}"
-        checkpoint_path = os.path.join(EXPERIMENT_ROOT, checkpoint_name, 'orgasegment_sam', 'best.pt')
+        checkpoint_name = f"{model}/{peft_method}/alpha_{alpha}/projection_size_{proj_size}/dropout_{dropout}"
+        checkpoint_path = os.path.join(EXPERIMENT_ROOT, "checkpoints", checkpoint_name, 'orgasegment_sam', 'best.pt')
+
+        assert os.path.exists(checkpoint_path), checkpoint_path
+
         result_path = os.path.join(
-            EXPERIMENT_ROOT, f"alpha_{alpha}", f"projection_size_{proj_size}", f"dropout_{dropout}"
+            EXPERIMENT_ROOT, "adaptformer", "orgasegment", f"alpha_{alpha}", f"projection_size_{proj_size}", f"dropout_{dropout}"
         )
+
+        os.makedirs(result_path, exist_ok=True)
+
         for current_setup in ALL_SCRIPTS:
             write_batch_script(
                 env_name="sam",
                 out_path=get_batch_script_names(tmp_folder),
                 inference_setup=current_setup,
                 checkpoint=checkpoint_path,
-                model_type="vit_b",
+                model_type="vit_b_lm",
                 experiment_folder=result_path,
+                dataset="orgasegment",
                 peft_rank=rank,
                 peft_method=peft_method,
                 alpha=alpha,
