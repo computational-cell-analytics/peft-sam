@@ -140,8 +140,8 @@ def for_covid_if(save_path):
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
 
-            raw = normalize(raw)
-            raw = raw * 255
+            # raw = normalize(raw)
+            # raw = raw * 255
 
             imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
             imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
@@ -160,8 +160,8 @@ def for_covid_if(save_path):
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
 
-            raw = normalize(raw)
-            raw = raw * 255
+            # raw = normalize(raw)
+            # raw = raw * 255
 
             imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
             imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
@@ -202,102 +202,72 @@ def for_mitolab(save_path):
     test_rois = np.s_[225:, :, :]
 
     """
-    all_dataset_ids = []
-    _roi_vol_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "mito_benchmarks", "*")))
+    vol_path = os.path.join(ROOT, "mitolab", "10982", "data", "mito_benchmarks", "glycolytic_muscle")
 
-    for vol_path in _roi_vol_paths:
-        dataset_id = os.path.split(vol_path)[-1]
-        all_dataset_ids.append(dataset_id)
+    dataset_id = os.path.split(vol_path)[-1]
 
-        os.makedirs(os.path.join(save_path, dataset_id, "raw"), exist_ok=True)
-        os.makedirs(os.path.join(save_path, dataset_id, "labels"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "raw"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "labels"), exist_ok=True)
 
-        em_path = glob(os.path.join(vol_path, "*_em.tif"))[0]
-        mito_path = glob(os.path.join(vol_path, "*_mito.tif"))[0]
+    em_path = glob(os.path.join(vol_path, "*_em.tif"))[0]
+    mito_path = glob(os.path.join(vol_path, "*_mito.tif"))[0]
 
-        vem = imageio.imread(em_path)
-        vmito = imageio.imread(mito_path)
+    vem = imageio.imread(em_path)
+    vmito = imageio.imread(mito_path)
 
-        for i, (slice_em, slice_mito) in tqdm(
-            enumerate(zip(vem, vmito)), total=len(vem), desc=f"Processing {dataset_id}"
-        ):
+    for i, (slice_em, slice_mito) in tqdm(
+        enumerate(zip(vem, vmito)), total=len(vem), desc=f"Processing {dataset_id}"
+    ):
 
-            if Path(em_path).stem.startswith("salivary_gland"):
-                slice_em = make_center_crop(slice_em, (1024, 1024))
-                slice_mito = make_center_crop(slice_mito, (1024, 1024))
+        if Path(em_path).stem.startswith("salivary_gland"):
+            slice_em = make_center_crop(slice_em, (1024, 1024))
+            slice_mito = make_center_crop(slice_mito, (1024, 1024))
 
-            if has_foreground(slice_mito):
-                instances = connected_components(slice_mito)
+        if has_foreground(slice_mito):
+            instances = connected_components(slice_mito)
 
-                raw_path = os.path.join(save_path, dataset_id, "raw", f"{dataset_id}_{i+1:05}.tif")
-                labels_path = os.path.join(save_path, dataset_id, "labels", f"{dataset_id}_{i+1:05}.tif")
+            raw_path = os.path.join(save_path, dataset_id, "raw", f"{dataset_id}_{i+1:05}.tif")
+            labels_path = os.path.join(save_path, dataset_id, "labels", f"{dataset_id}_{i+1:05}.tif")
 
-                imageio.imwrite(raw_path, slice_em, compression="zlib")
-                imageio.imwrite(labels_path, instances, compression="zlib")
+            imageio.imwrite(raw_path, slice_em, compression="zlib")
+            imageio.imwrite(labels_path, instances, compression="zlib")
 
-    # now, let's work on the tem dataset
-    image_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "tem_benchmark", "images", "*")))
-    mask_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "tem_benchmark", "masks", "*")))
-
-    os.makedirs(os.path.join(save_path, "tem", "raw"), exist_ok=True)
-    os.makedirs(os.path.join(save_path, "tem", "labels"), exist_ok=True)
-
-    # let's move the tem data to slices
-    for image_path, mask_path in tqdm(zip(image_paths, mask_paths), desc="Preprocessimg tem", total=len(image_paths)):
-        sample_id = os.path.split(image_path)[-1]
-        image_dst = os.path.join(save_path, "tem", "raw", sample_id)
-        mask_dst = os.path.join(save_path, "tem", "labels", sample_id)
-
-        tem_image = make_center_crop(imageio.imread(image_path), (768, 768))
-        tem_mask = make_center_crop(imageio.imread(mask_path), (768, 768))
-
-        if has_foreground(tem_mask):
-            imageio.imwrite(image_dst, tem_image)
-            imageio.imwrite(mask_dst, tem_mask)
-
-    all_dataset_ids.append("tem")
-
-    for dataset_id in all_dataset_ids:
-        make_custom_splits(save_dir=os.path.join(save_path, dataset_id))
-
-
-def make_custom_splits(save_dir):
     def move_samples(split, all_raw_files, all_label_files):
         for raw_path, label_path in (zip(all_raw_files, all_label_files)):
             # let's move the raw slice
             slice_id = os.path.split(raw_path)[-1]
-            dst = os.path.join(save_dir, split, "raw", slice_id)
+            dst = os.path.join(save_path, dataset_id, split, "raw", slice_id)
             shutil.move(raw_path, dst)
 
             # let's move the label slice
             slice_id = os.path.split(label_path)[-1]
-            dst = os.path.join(save_dir, split, "labels", slice_id)
+            dst = os.path.join(save_path, dataset_id, split, "labels", slice_id)
             shutil.move(label_path, dst)
 
     # make a custom splitting logic
     # 1. move to val dir
-    os.makedirs(os.path.join(save_dir, "val", "raw"), exist_ok=True)
-    os.makedirs(os.path.join(save_dir, "val", "labels"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "val", "raw"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "val", "labels"), exist_ok=True)
 
     move_samples(
         split="val",
-        all_raw_files=sorted(glob(os.path.join(save_dir, "raw", "*")))[175:225],
-        all_label_files=sorted(glob(os.path.join(save_dir, "labels", "*")))[175:225]
+        all_raw_files=sorted(glob(os.path.join(save_path, dataset_id, "raw", "*")))[175:225],
+        all_label_files=sorted(glob(os.path.join(save_path, dataset_id, "labels", "*")))[175:225]
     )
 
     # 2. move to test dir
-    os.makedirs(os.path.join(save_dir, "test", "raw"), exist_ok=True)
-    os.makedirs(os.path.join(save_dir, "test", "labels"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "test", "raw"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "test", "labels"), exist_ok=True)
 
     move_samples(
         split="test",
-        all_raw_files=sorted(glob(os.path.join(save_dir, "raw", "*")))[225:],
-        all_label_files=sorted(glob(os.path.join(save_dir, "labels", "*")))[225:]
+        all_raw_files=sorted(glob(os.path.join(save_path, dataset_id, "raw", "*")))[175:],
+        all_label_files=sorted(glob(os.path.join(save_path, dataset_id, "labels", "*")))[175:]
     )
 
     # let's remove the left-overs
-    shutil.rmtree(os.path.join(save_dir, "raw"))
-    shutil.rmtree(os.path.join(save_dir, "labels"))
+    shutil.rmtree(os.path.join(save_path, dataset_id, "raw"))
+    shutil.rmtree(os.path.join(save_path, dataset_id, "labels"))
 
 
 def for_orgasegment(save_path):
@@ -362,9 +332,9 @@ def main():
 
     download_all_datasets(ROOT)
 
-    preprocess_data("covid_if")
+    # preprocess_data("covid_if")
     # preprocess_data("platynereis")
-    # preprocess_data("mitolab")
+    preprocess_data("mitolab")
     # preprocess_data("orgasegment")
     # preprocess_data("gonuclear")
 
