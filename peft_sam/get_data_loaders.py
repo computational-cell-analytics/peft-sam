@@ -10,6 +10,7 @@ from torch_em.transform.label import PerObjectDistanceTransform
 import micro_sam.training as sam_training
 from micro_sam.training.util import ResizeLabelTrafo
 from peft_sam.util import RawTrafo
+from peft_sam.hpa import get_hpa_segmentation_loader
 
 
 def _fetch_loaders(dataset_name, data_root):
@@ -227,6 +228,36 @@ def _fetch_loaders(dataset_name, data_root):
             ndim=2
         )
 
+    elif dataset_name == "hpa":
+        label_transform = PerObjectDistanceTransform(
+            distances=True, boundary_distances=True, directed_distances=False,
+            foreground=True, instances=True, min_size=0
+        )
+        train_loader = get_hpa_segmentation_loader(
+            path=os.path.join(data_root, "hpa"),
+            split="train",
+            patch_shape=(1024, 1024),
+            batch_size=2,
+            channels=["protein"],
+            download=True,
+            n_workers_preproc=16,
+            raw_transform=RawTrafo((1024, 1024), do_rescaling=True),
+            label_transform=label_transform,
+            sampler=MinInstanceSampler(),
+        )
+        val_loader = get_hpa_segmentation_loader(
+            path=os.path.join(data_root, "hpa"),
+            split="val",
+            patch_shape=(1024, 1024),
+            batch_size=2,
+            channels=["protein"],
+            download=True,
+            n_workers_preproc=16,
+            raw_transform=RawTrafo((1024, 1024), do_rescaling=True),
+            label_transform=label_transform,
+            sampler=MinInstanceSampler(),
+        )
+
     else:
         raise ValueError(f"{dataset_name} is not a valid dataset name.")
 
@@ -236,7 +267,7 @@ def _fetch_loaders(dataset_name, data_root):
 def _verify_loaders():
 
     for dataset_name in ["covid_if", "livecell", "orgasegment", "mitolab_glycolytic_muscle", "platy_cilia",
-                         "gonuclear"]:
+                         "gonuclear", "hpa"]:
         train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name, data_root="/scratch/usr/nimcarot/data")
 
         # breakpoint()

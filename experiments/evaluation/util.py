@@ -20,7 +20,7 @@ DATASETS = [
     # in-domain (LM)
     "livecell",
     # out-of-domain (LM)
-    "covid_if", "orgasegment", "gonuclear",
+    "covid_if", "orgasegment", "gonuclear", "hpa",
     # organelles (EM)
     #   - out-of-domain
     "mitolab/glycolytic_muscle", "platynereis/cilia"

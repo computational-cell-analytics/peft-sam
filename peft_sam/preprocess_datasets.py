@@ -30,6 +30,8 @@ def preprocess_data(dataset):
         for_orgasegment(os.path.join(ROOT, "orgasegment", "slices"))
     elif dataset == "gonuclear":
         for_gonuclear(os.path.join(ROOT, "gonuclear", "slices"))
+    elif dataset == "hpa":
+        for_hpa(os.path.join(ROOT, "hpa", "slices"))
 
 
 def convert_rgb(raw):
@@ -82,7 +84,7 @@ def save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_c
 
 def from_h5_to_tif(
     h5_vol_path, raw_key, raw_dir, labels_key, labels_dir, slice_prefix_name, do_connected_components=True,
-    interface=h5py, crop_shape=None, roi_slices=None, to_one_channel=False
+    interface=h5py, crop_shape=None, roi_slices=None,
 ):
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(labels_dir, exist_ok=True)
@@ -95,10 +97,6 @@ def from_h5_to_tif(
     with interface.File(h5_vol_path, "r", **kwargs) as f:
         raw = f[raw_key][:]
         labels = f[labels_key][:]
-
-        if raw.ndim == 3 and raw.shape[0] == 3 and to_one_channel:  # for tissuenet
-            print("Got an RGB image, converting it to one-channel.")
-            raw = convert_rgb(raw)
 
         if roi_slices is not None:  # for cremi
             raw = RoiWrapper(raw, roi_slices)[:]
@@ -219,10 +217,6 @@ def for_mitolab(save_path):
         enumerate(zip(vem, vmito)), total=len(vem), desc=f"Processing {dataset_id}"
     ):
 
-        if Path(em_path).stem.startswith("salivary_gland"):
-            slice_em = make_center_crop(slice_em, (1024, 1024))
-            slice_mito = make_center_crop(slice_mito, (1024, 1024))
-
         if has_foreground(slice_mito):
             instances = connected_components(slice_mito)
 
@@ -317,6 +311,30 @@ def for_gonuclear(save_path):
     )
 
 
+def for_hpa(save_dir):
+    """
+    take the last 58 volumes from the train split for validation and use the validation split for testing
+    """
+    hpa_val_vols = sorted(glob(os.path.join(ROOT, "hpa", "train", "*.h5")))[210:]
+    hpa_test_vols = sorted(glob(os.path.join(ROOT, "hpa", "val", "*.h5")))
+
+    def save_slices_per_split(all_vol_paths, split):
+        for vol_path in all_vol_paths:
+            vol_id = Path(vol_path).stem
+
+            from_h5_to_tif(
+                h5_vol_path=vol_path,
+                raw_key="raw/protein",
+                raw_dir=os.path.join(save_dir, split, "raw"),
+                labels_key="labels",
+                labels_dir=os.path.join(save_dir, split, "labels"),
+                slice_prefix_name=f"hpa_{split}_{vol_id}"
+            )
+
+    save_slices_per_split(hpa_val_vols, "val")
+    save_slices_per_split(hpa_test_vols, "test")
+
+
 def download_all_datasets(path):
     datasets.get_platynereis_cilia_dataset(os.path.join(path, "platynereis"), patch_shape=(1, 512, 512), download=True)
     datasets.get_covid_if_dataset(os.path.join(path, "covid_if"), patch_shape=(1, 512, 512), download=True)
@@ -326,17 +344,22 @@ def download_all_datasets(path):
                                      patch_shape=(512, 512), download=True)
     datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512),
                                    segmentation_task="nuclei", download=True)
+    datasets.get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="val", patch_shape=(1024, 1024),
+                                          channels=["protein"], download=True)
+    datasets.get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="test", patch_shape=(1024, 1024),
+                                          channels=["protein"], download=True)
 
 
 def main():
 
     download_all_datasets(ROOT)
 
-    # preprocess_data("covid_if")
-    # preprocess_data("platynereis")
+    preprocess_data("covid_if")
+    preprocess_data("platynereis")
     preprocess_data("mitolab")
-    # preprocess_data("orgasegment")
-    # preprocess_data("gonuclear")
+    preprocess_data("orgasegment")
+    preprocess_data("gonuclear")
+    preprocess_data("hpa")
 
 
 if __name__ == "__main__":

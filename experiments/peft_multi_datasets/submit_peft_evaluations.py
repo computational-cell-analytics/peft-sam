@@ -178,7 +178,7 @@ def run_peft_evaluations():
                     )
 
 
-def main(args):
+def main():
     run_peft_evaluations()
 
 
