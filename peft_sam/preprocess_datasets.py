@@ -3,16 +3,19 @@ import shutil
 from glob import glob
 from tqdm import tqdm
 from pathlib import Path
+from math import ceil, floor
 
 import h5py
 import numpy as np
 import imageio.v3 as imageio
 from skimage.measure import label as connected_components
 
-from elf.wrapper import RoiWrapper
-
 from torch_em.data import datasets
 from torch_em.transform.raw import normalize, normalize_percentile
+
+import nifty.tools as nt
+
+from elf.wrapper import RoiWrapper
 
 
 ROOT = "/scratch/usr/nimcarot/data/"
@@ -49,42 +52,95 @@ def has_foreground(label):
         return False
 
 
-def make_center_crop(image, desired_shape):
-    if image.shape < desired_shape:
-        return image
-
-    center_coords = (int(image.shape[0] / 2), int(image.shape[1] / 2))
-    tolerances = (int(desired_shape[0] / 2), int(desired_shape[1] / 2))
-
-    # let's take the center crop from the image
-    cropped_image = image[
-        center_coords[0] - tolerances[0]: center_coords[0] + tolerances[0],
-        center_coords[1] - tolerances[1]: center_coords[1] + tolerances[1]
-    ]
-    return cropped_image
+def slices_overlap(slice1, slice2):
+    """Check if two slices overlap in any dimension."""
+    return not (
+        slice1[0].stop <= slice2[0].start or  # No overlap in the first dimension
+        slice1[0].start >= slice2[0].stop or
+        slice1[1].stop <= slice2[1].start or  # No overlap in the second dimension
+        slice1[1].start >= slice2[1].stop
+    )
 
 
-def save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name):
+def get_best_crops(raw, labels, desired_shape):
+    shape = raw.shape[:2]
+    ndim = 2
+    blocking = nt.blocking([0] * ndim, shape, desired_shape)
+    n_blocks = blocking.numberOfBlocks
+
+    # Total number of patches that fit into the image
+    n_patches = (shape[0] // desired_shape[0]) * (shape[1] // desired_shape[1])
+    assert n_patches > 0, "Chosen patch shape is too big for the image"
+    patches = []
+    valid_patches = []
+
+    # get all possible blocks
+    for block_id in range(n_blocks):
+        block = blocking.getBlock(block_id)
+        bb = tuple(slice(beg, end) for beg, end in zip(block.begin, block.end))
+        # only allow blocks that have the desired shape
+        if raw[bb].shape[:2] == desired_shape:
+            patches.append(bb)
+
+    # Extract the patches with the most instances and remove all patches that overlap with the best patch.
+    # Repeat we have the correct number of valid patches.
+    while len(valid_patches) < n_patches:
+        max_idx = 0
+        max_objects = 0
+        for i in range(len(patches)):
+            n_objects = len(np.unique(labels[patches[i]]))
+            if n_objects > max_objects:
+                max_objects = n_objects
+                max_idx = i
+        valid_patches.append(patches.pop(max_idx))
+        for patch in patches:
+            if slices_overlap(valid_patches[-1], patch):
+                patches.remove(patch)
+
+    raw_patches = []
+    label_patches = []
+    for slice_ in valid_patches:
+        raw_patches.append(raw[slice_])
+        label_patches.append(labels[slice_])
+
+    return raw_patches, label_patches
+
+
+def save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name, padding):
+
+    if padding:
+        assert crop_shape is not None, "Crop shape is missing for padding"
+        # make sure padding is needed for this particular file
+        if crop_shape[0] > _raw.shape[0] or crop_shape[1] > _raw.shape[1]:
+            tmp_ddim = (crop_shape[0] - _raw.shape[-2], crop_shape[1] - _raw.shape[-1])
+            ddim = (tmp_ddim[0] / 2, tmp_ddim[1] / 2)
+            _raw = np.pad(
+                _raw,
+                pad_width=((ceil(ddim[0]), floor(ddim[0])), (ceil(ddim[1]), floor(ddim[1]))),
+                mode='constant'
+            )
+
     if crop_shape is not None:
-        _raw = make_center_crop(_raw, crop_shape)
-        _label = make_center_crop(_label, crop_shape)
+        raw, labels = get_best_crops(_raw, _label, crop_shape)
 
-    # we only save labels with foreground
-    if has_foreground(_label):
-        if do_connected_components:
-            instances = connected_components(_label)
-        else:
-            instances = _label
+    for _raw, _label in zip(raw, labels):
+        if has_foreground(_label):
+            if do_connected_components:
+                instances = connected_components(_label)
+            else:
+                instances = _label
+            _raw = normalize(_raw)
+            _raw = _raw * 255
 
-        raw_path = os.path.join(raw_dir, f"{slice_prefix_name}_{i+1:05}.tif")
-        labels_path = os.path.join(labels_dir, f"{slice_prefix_name}_{i+1:05}.tif")
-        imageio.imwrite(raw_path, _raw, compression="zlib")
-        imageio.imwrite(labels_path, instances, compression="zlib")
+            raw_path = os.path.join(raw_dir, f"{slice_prefix_name}_{i+1:05}.tif")
+            labels_path = os.path.join(labels_dir, f"{slice_prefix_name}_{i+1:05}.tif")
+            imageio.imwrite(raw_path, _raw, compression="zlib")
+            imageio.imwrite(labels_path, instances, compression="zlib")
 
 
 def from_h5_to_tif(
     h5_vol_path, raw_key, raw_dir, labels_key, labels_dir, slice_prefix_name, do_connected_components=True,
-    interface=h5py, crop_shape=None, roi_slices=None,
+    interface=h5py, crop_shape=None, padding=False, roi_slices=None
 ):
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(labels_dir, exist_ok=True)
@@ -98,7 +154,7 @@ def from_h5_to_tif(
         raw = f[raw_key][:]
         labels = f[labels_key][:]
 
-        if roi_slices is not None:  # for cremi
+        if roi_slices is not None:  # for platynereis cilia
             raw = RoiWrapper(raw, roi_slices)[:]
             labels = RoiWrapper(labels, roi_slices)[:]
 
@@ -107,18 +163,8 @@ def from_h5_to_tif(
 
         if raw.ndim == 3 and labels.ndim == 3:  # when we have a volume or mono-channel image
             for i, (_raw, _label) in tqdm(enumerate(zip(raw, labels)), total=raw.shape[0], desc=h5_vol_path):
-                save_to_tif(
-                    i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name
-                )
-
-        elif raw.ndim == 3 and labels.ndim == 2:  # when we have a multi-channel input (rgb)
-            if raw.shape[0] == 4:  # hpa has 4 channel inputs (0: microtubules, 1: protein, 2: nuclei, 3: er)
-                raw = raw[1:]
-
-            # making channels last (to make use of 3-channel inputs)
-            raw = raw.transpose(1, 2, 0)
-
-            save_to_tif(0, raw, labels, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name)
+                save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components,
+                            slice_prefix_name, padding=padding)
 
 
 def for_covid_if(save_path):
@@ -137,12 +183,14 @@ def for_covid_if(save_path):
         with h5py.File(image_path, "r") as f:
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
+            raw, labels = get_best_crops(raw, labels, (512, 512))
+            for i, (raw_, labels_) in enumerate(zip(raw, labels)):
 
-            # raw = normalize(raw)
-            # raw = raw * 255
+                raw_ = normalize(raw_)
+                raw_ = raw_ * 255
 
-            imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
-            imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
+                imageio.imwrite(os.path.join(image_save_dir, f"{image_id}_{i}.tif"), raw_)
+                imageio.imwrite(os.path.join(label_save_dir, f"{image_id}_{i}.tif"), labels_)
 
     # test images
     for image_path in tqdm(all_image_paths[13:]):
@@ -158,19 +206,22 @@ def for_covid_if(save_path):
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
 
-            # raw = normalize(raw)
-            # raw = raw * 255
+            raw, labels = get_best_crops(raw, labels, (512, 512))
+            for i, (raw_, labels_) in enumerate(zip(raw, labels)):
 
-            imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
-            imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
+                raw_ = normalize(raw_)
+                raw_ = raw_ * 255
+
+                imageio.imwrite(os.path.join(image_save_dir, f"{image_id}_{i}.tif"), raw)
+                imageio.imwrite(os.path.join(label_save_dir, f"{image_id}_{i}.tif"), labels)
 
 
 def for_platynereis(save_dir, choice="cilia"):
     """
     for cilia:
-        for training   : we take regions of training vol 1-3
-        for validation: we take regions of training vol 1-3
-        for test: we take validation vol 1
+        for training   : we take regions of training vol 1-2
+        for validation: we take regions of training vol 1-2
+        for test: we take train vol 3
 
     """
     roi_slice = np.s_[85:, :, :]
@@ -188,6 +239,8 @@ def for_platynereis(save_dir, choice="cilia"):
                 labels_dir=os.path.join(save_dir, choice, "labels"),
                 slice_prefix_name=f"platy_{choice}_{split}_{vol_id}",
                 roi_slices=roi_slice if split == "val" else None,
+                crop_shape=(512, 512),
+                padding=True
             )
 
 
@@ -201,9 +254,7 @@ def for_mitolab(save_path):
 
     """
     vol_path = os.path.join(ROOT, "mitolab", "10982", "data", "mito_benchmarks", "glycolytic_muscle")
-
     dataset_id = os.path.split(vol_path)[-1]
-
     os.makedirs(os.path.join(save_path, dataset_id, "raw"), exist_ok=True)
     os.makedirs(os.path.join(save_path, dataset_id, "labels"), exist_ok=True)
 
@@ -283,8 +334,16 @@ def for_orgasegment(save_path):
             image = imageio.imread(image_path)
             label = imageio.imread(label_path)
 
-            imageio.imwrite(os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}.tif"), image)
-            imageio.imwrite(os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}.tif"), label)
+            raw, labels = get_best_crops(image, label, (512, 512))
+
+            for i, (_raw, _labels) in enumerate(zip(raw, labels)):
+
+                imageio.imwrite(
+                    os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}_{i}.tif"), _raw
+                )
+                imageio.imwrite(
+                    os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}_{i}.tif"), _labels
+                )
 
 
 def for_gonuclear(save_path):
@@ -297,8 +356,8 @@ def for_gonuclear(save_path):
         raw_dir=os.path.join(save_path, "val", "raw"),
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "val", "labels"),
-        slice_prefix_name="gonuclear_val_1129",
-        roi_slices=None
+        slice_prefix_name="gonuclear_val_1139",
+        crop_shape=(512, 512)
     )
     from_h5_to_tif(
         h5_vol_path=go_nuclear_test_vol,
@@ -307,7 +366,7 @@ def for_gonuclear(save_path):
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "test", "labels"),
         slice_prefix_name="gonuclear_test_1170",
-        roi_slices=None
+        crop_shape=(512, 512)
     )
 
 
@@ -328,7 +387,8 @@ def for_hpa(save_dir):
                 raw_dir=os.path.join(save_dir, split, "raw"),
                 labels_key="labels",
                 labels_dir=os.path.join(save_dir, split, "labels"),
-                slice_prefix_name=f"hpa_{split}_{vol_id}"
+                slice_prefix_name=f"hpa_{split}_{vol_id}",
+                crop_shape=(1728, 1728)
             )
 
     save_slices_per_split(hpa_val_vols, "val")
