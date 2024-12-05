@@ -16,6 +16,7 @@ from torch_em.transform.raw import normalize, normalize_percentile
 import nifty.tools as nt
 
 from elf.wrapper import RoiWrapper
+from peft_sam.hpa import get_hpa_segmentation_dataset
 
 
 ROOT = "/scratch/usr/nimcarot/data/"
@@ -106,22 +107,26 @@ def get_best_crops(raw, labels, desired_shape):
     return raw_patches, label_patches
 
 
-def save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name, padding):
+def save_to_tif(i, raw, label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name, padding):
 
     if padding:
         assert crop_shape is not None, "Crop shape is missing for padding"
-        # make sure padding is needed for this particular file
-        if crop_shape[0] > _raw.shape[0] or crop_shape[1] > _raw.shape[1]:
-            tmp_ddim = (crop_shape[0] - _raw.shape[-2], crop_shape[1] - _raw.shape[-1])
+
+        def pad(img, crop_shape):
+            tmp_ddim = (max(0, crop_shape[0] - img.shape[-2]), max(0, crop_shape[1] - img.shape[-1]))
             ddim = (tmp_ddim[0] / 2, tmp_ddim[1] / 2)
-            _raw = np.pad(
-                _raw,
+            img = np.pad(
+                img,
                 pad_width=((ceil(ddim[0]), floor(ddim[0])), (ceil(ddim[1]), floor(ddim[1]))),
                 mode='constant'
             )
+            return img
+
+        raw = pad(raw, crop_shape)
+        label = pad(label, crop_shape)
 
     if crop_shape is not None:
-        raw, labels = get_best_crops(_raw, _label, crop_shape)
+        raw, labels = get_best_crops(raw, label, crop_shape)
 
     for _raw, _label in zip(raw, labels):
         if has_foreground(_label):
@@ -183,6 +188,7 @@ def for_covid_if(save_path):
         with h5py.File(image_path, "r") as f:
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
+
             raw, labels = get_best_crops(raw, labels, (512, 512))
             for i, (raw_, labels_) in enumerate(zip(raw, labels)):
 
@@ -212,8 +218,8 @@ def for_covid_if(save_path):
                 raw_ = normalize(raw_)
                 raw_ = raw_ * 255
 
-                imageio.imwrite(os.path.join(image_save_dir, f"{image_id}_{i}.tif"), raw)
-                imageio.imwrite(os.path.join(label_save_dir, f"{image_id}_{i}.tif"), labels)
+                imageio.imwrite(os.path.join(image_save_dir, f"{image_id}_{i}.tif"), raw_)
+                imageio.imwrite(os.path.join(label_save_dir, f"{image_id}_{i}.tif"), labels_)
 
 
 def for_platynereis(save_dir, choice="cilia"):
@@ -229,6 +235,7 @@ def for_platynereis(save_dir, choice="cilia"):
         vol_paths = sorted(glob(os.path.join(ROOT, "platynereis", "cilia", "train_*")))
         for vol_path in vol_paths:
             vol_id = os.path.split(vol_path)[-1].split(".")[0][-2:]
+            print(vol_id)
 
             split = "test" if vol_id == "03" else "val"
             from_h5_to_tif(
@@ -273,6 +280,9 @@ def for_mitolab(save_path):
 
             raw_path = os.path.join(save_path, dataset_id, "raw", f"{dataset_id}_{i+1:05}.tif")
             labels_path = os.path.join(save_path, dataset_id, "labels", f"{dataset_id}_{i+1:05}.tif")
+
+            slice_em = normalize(slice_em)
+            slice_em = slice_em * 255
 
             imageio.imwrite(raw_path, slice_em, compression="zlib")
             imageio.imwrite(labels_path, instances, compression="zlib")
@@ -338,6 +348,9 @@ def for_orgasegment(save_path):
 
             for i, (_raw, _labels) in enumerate(zip(raw, labels)):
 
+                _raw = normalize(_raw)
+                _raw = _raw * 255
+
                 imageio.imwrite(
                     os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}_{i}.tif"), _raw
                 )
@@ -357,7 +370,7 @@ def for_gonuclear(save_path):
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "val", "labels"),
         slice_prefix_name="gonuclear_val_1139",
-        crop_shape=(512, 512)
+        crop_shape=(1024, 1024)
     )
     from_h5_to_tif(
         h5_vol_path=go_nuclear_test_vol,
@@ -366,7 +379,8 @@ def for_gonuclear(save_path):
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "test", "labels"),
         slice_prefix_name="gonuclear_test_1170",
-        crop_shape=(512, 512)
+        crop_shape=(1024, 1024),
+        padding=True
     )
 
 
@@ -404,22 +418,22 @@ def download_all_datasets(path):
                                      patch_shape=(512, 512), download=True)
     datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512),
                                    segmentation_task="nuclei", download=True)
-    datasets.get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="val", patch_shape=(1024, 1024),
-                                          channels=["protein"], download=True)
-    datasets.get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="test", patch_shape=(1024, 1024),
-                                          channels=["protein"], download=True)
+    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="val", patch_shape=(1728, 1728),
+                                 channels=["protein"], download=True)
+    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="test", patch_shape=(1728, 1728),
+                                 channels=["protein"], download=True)
 
 
 def main():
 
     download_all_datasets(ROOT)
 
-    preprocess_data("covid_if")
+    # preprocess_data("covid_if")
     preprocess_data("platynereis")
-    preprocess_data("mitolab")
-    preprocess_data("orgasegment")
-    preprocess_data("gonuclear")
-    preprocess_data("hpa")
+    # preprocess_data("mitolab")
+    # preprocess_data("orgasegment")
+    # preprocess_data("gonuclear")
+    # preprocess_data("hpa")
 
 
 if __name__ == "__main__":
