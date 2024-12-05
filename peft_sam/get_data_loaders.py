@@ -20,11 +20,8 @@ def _fetch_loaders(dataset_name, data_root):
         # 1, Covid IF does not have internal splits. For this example I chose first 10 samples for training,
         # and next 3 samples for validation, left the rest for testing.
 
-        label_transform = PerObjectDistanceTransform(
-            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
-            min_size=0
-        )
-        raw_transform = RawTrafo(do_padding=False, do_rescaling=True)
+        raw_transform = RawTrafo(desired_shape=(512, 512))
+        label_transform = ResizeLabelTrafo((512, 512))
 
         train_loader = light_microscopy.get_covid_if_loader(
             path=os.path.join(data_root, "covid_if"),
@@ -87,11 +84,9 @@ def _fetch_loaders(dataset_name, data_root):
 
     elif dataset_name == "orgasegment":
         # 2. OrgaSegment has internal splits provided. We follow the respective splits for our experiments.
-        label_transform = PerObjectDistanceTransform(
-            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
-            min_size=0
-        )
-        raw_transform = RawTrafo(do_padding=False, triplicate_dims=True)
+
+        raw_transform = RawTrafo(desired_shape=(512, 512), triplicate_dims=True)
+        label_transform = ResizeLabelTrafo((512, 512))
 
         train_loader = light_microscopy.get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
@@ -123,11 +118,8 @@ def _fetch_loaders(dataset_name, data_root):
         train_rois = np.s_[0:175, :, :]
         val_rois = np.s_[175:225, :, :]
 
-        raw_transform = RawTrafo((1, 512, 512), do_padding=False)
-        label_transform = PerObjectDistanceTransform(
-            distances=True, boundary_distances=True, directed_distances=False,
-            foreground=True, instances=True, min_size=0
-        )
+        raw_transform = RawTrafo((1, 383, 765))
+        label_transform = ResizeLabelTrafo((1, 383, 765))
         train_loader = electron_microscopy.cem.get_benchmark_loader(
             path=os.path.join(data_root, "mitolab"),
             dataset_id=3,
@@ -208,8 +200,8 @@ def _fetch_loaders(dataset_name, data_root):
             segmentation_task="nuclei",
             download=True,
             sample_ids=[1135, 1136, 1137],
-            raw_transform=RawTrafo((1, 512, 512), do_rescaling=True),
-            label_transform=ResizeLabelTrafo((512, 512)),
+            raw_transform=RawTrafo((1, 1024, 1024)),
+            label_transform=ResizeLabelTrafo((1024, 1024)),
             num_workers=16,
             sampler=MinInstanceSampler(),
             ndim=2
@@ -221,8 +213,8 @@ def _fetch_loaders(dataset_name, data_root):
             segmentation_task="nuclei",
             download=True,
             sample_ids=[1139],
-            raw_transform=RawTrafo((1, 512, 512), do_rescaling=True),
-            label_transform=ResizeLabelTrafo((512, 512)),
+            raw_transform=RawTrafo((1, 1024, 1024)),
+            label_transform=ResizeLabelTrafo((1024, 1024)),
             num_workers=16,
             sampler=MinInstanceSampler(),
             ndim=2
@@ -241,7 +233,7 @@ def _fetch_loaders(dataset_name, data_root):
             channels=["protein"],
             download=True,
             n_workers_preproc=16,
-            raw_transform=RawTrafo((1728, 1728), do_rescaling=True),
+            raw_transform=RawTrafo((1728, 1728)),
             label_transform=label_transform,
             sampler=MinInstanceSampler(),
         )
@@ -253,7 +245,7 @@ def _fetch_loaders(dataset_name, data_root):
             channels=["protein"],
             download=True,
             n_workers_preproc=16,
-            raw_transform=RawTrafo((1728, 1728), do_rescaling=True),
+            raw_transform=RawTrafo((1728, 1728)),
             label_transform=label_transform,
             sampler=MinInstanceSampler(),
         )

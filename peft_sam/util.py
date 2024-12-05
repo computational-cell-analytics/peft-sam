@@ -15,7 +15,7 @@ class RawTrafo:
     self.triplicate_dims: if true triplicates the image to 3 channels, in case some of the datasets
                              images are RGB and some aren't
     """
-    def __init__(self, desired_shape=None, do_padding=True, do_rescaling=False, padding="constant",
+    def __init__(self, desired_shape=None, do_padding=True, do_rescaling=True, padding="constant",
                  triplicate_dims=False):
         self.desired_shape = desired_shape
         self.padding = padding

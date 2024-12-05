@@ -12,6 +12,9 @@ PEFT_METHODS = {
     "adaptformer": {"alpha": 1, "dropout": None, "projection_size": 64},
     "ssf": {},
     "fact": {"peft_rank": 32, "dropout": 0.1},
+    "AttentionSurgery": {"peft_rank": 2},
+    "BiasSurgery": {"peft_rank": 2},
+    "LayerNormSurgery": {"peft_rank": 2},
     }
 
 

@@ -107,27 +107,12 @@ def get_best_crops(raw, labels, desired_shape):
     return raw_patches, label_patches
 
 
-def save_to_tif(i, raw, label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name, padding):
-
-    if padding:
-        assert crop_shape is not None, "Crop shape is missing for padding"
-
-        def pad(img, crop_shape):
-            tmp_ddim = (max(0, crop_shape[0] - img.shape[-2]), max(0, crop_shape[1] - img.shape[-1]))
-            ddim = (tmp_ddim[0] / 2, tmp_ddim[1] / 2)
-            img = np.pad(
-                img,
-                pad_width=((ceil(ddim[0]), floor(ddim[0])), (ceil(ddim[1]), floor(ddim[1]))),
-                mode='constant'
-            )
-            return img
-
-        raw = pad(raw, crop_shape)
-        label = pad(label, crop_shape)
+def save_to_tif(i, raw, label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name):
 
     if crop_shape is not None:
         raw, labels = get_best_crops(raw, label, crop_shape)
-
+    else:
+        raw, labels = [raw], [label]
     for _raw, _label in zip(raw, labels):
         if has_foreground(_label):
             if do_connected_components:
@@ -145,7 +130,7 @@ def save_to_tif(i, raw, label, crop_shape, raw_dir, labels_dir, do_connected_com
 
 def from_h5_to_tif(
     h5_vol_path, raw_key, raw_dir, labels_key, labels_dir, slice_prefix_name, do_connected_components=True,
-    interface=h5py, crop_shape=None, padding=False, roi_slices=None
+    interface=h5py, crop_shape=None, roi_slices=None
 ):
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(labels_dir, exist_ok=True)
@@ -169,7 +154,7 @@ def from_h5_to_tif(
         if raw.ndim == 3 and labels.ndim == 3:  # when we have a volume or mono-channel image
             for i, (_raw, _label) in tqdm(enumerate(zip(raw, labels)), total=raw.shape[0], desc=h5_vol_path):
                 save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components,
-                            slice_prefix_name, padding=padding)
+                            slice_prefix_name)
 
 
 def for_covid_if(save_path):
@@ -235,9 +220,9 @@ def for_platynereis(save_dir, choice="cilia"):
         vol_paths = sorted(glob(os.path.join(ROOT, "platynereis", "cilia", "train_*")))
         for vol_path in vol_paths:
             vol_id = os.path.split(vol_path)[-1].split(".")[0][-2:]
-            print(vol_id)
 
             split = "test" if vol_id == "03" else "val"
+            crop_shape = None if vol_id == "01" else (512, 512)
             from_h5_to_tif(
                 h5_vol_path=vol_path,
                 raw_key="volumes/raw",
@@ -246,8 +231,7 @@ def for_platynereis(save_dir, choice="cilia"):
                 labels_dir=os.path.join(save_dir, choice, "labels"),
                 slice_prefix_name=f"platy_{choice}_{split}_{vol_id}",
                 roi_slices=roi_slice if split == "val" else None,
-                crop_shape=(512, 512),
-                padding=True
+                crop_shape=crop_shape,
             )
 
 
@@ -346,16 +330,16 @@ def for_orgasegment(save_path):
 
             raw, labels = get_best_crops(image, label, (512, 512))
 
-            for i, (_raw, _labels) in enumerate(zip(raw, labels)):
+            for j, (_raw, _labels) in enumerate(zip(raw, labels)):
 
                 _raw = normalize(_raw)
                 _raw = _raw * 255
 
                 imageio.imwrite(
-                    os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}_{i}.tif"), _raw
+                    os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _raw
                 )
                 imageio.imwrite(
-                    os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}_{i}.tif"), _labels
+                    os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _labels
                 )
 
 
@@ -379,8 +363,6 @@ def for_gonuclear(save_path):
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "test", "labels"),
         slice_prefix_name="gonuclear_test_1170",
-        crop_shape=(1024, 1024),
-        padding=True
     )
 
 
@@ -428,12 +410,12 @@ def main():
 
     download_all_datasets(ROOT)
 
-    # preprocess_data("covid_if")
+    preprocess_data("covid_if")
     preprocess_data("platynereis")
-    # preprocess_data("mitolab")
-    # preprocess_data("orgasegment")
-    # preprocess_data("gonuclear")
-    # preprocess_data("hpa")
+    preprocess_data("mitolab")
+    preprocess_data("orgasegment")
+    preprocess_data("gonuclear")
+    preprocess_data("hpa")
 
 
 if __name__ == "__main__":
