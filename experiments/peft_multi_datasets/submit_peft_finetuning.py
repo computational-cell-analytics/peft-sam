@@ -9,14 +9,13 @@ ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitol
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
-    "adaptformer": {"alpha": 1, "dropout": None, "projection_size": 64},
-    "ssf": {},
-    "fact": {"peft_rank": 32, "dropout": 0.1},
+    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "projection_size": 64},
+    "ssf": {"peft_rank": 2},
+    "fact": {"peft_rank": 16, "dropout": 0.1},
     "AttentionSurgery": {"peft_rank": 2},
     "BiasSurgery": {"peft_rank": 2},
     "LayerNormSurgery": {"peft_rank": 2},
     }
-
 
 def write_batch_script(
     env_name,
@@ -108,6 +107,8 @@ def cpkt_exists(cpkt_name, args):
 
 def run_peft_finetuning(args):
     for dataset, domain in ALL_DATASETS.items():
+        if dataset != "orgasegment":
+            continue
         gen_model = f"vit_b_{domain}"
         for model in ["vit_b", gen_model]:
             # full finetuning
@@ -153,7 +154,7 @@ def run_peft_finetuning(args):
                     peft_method=peft_method,
                     checkpoint_name=checkpoint_name,
                     dataset=dataset,
-                    *peft_kwargs
+                    **peft_kwargs
                 )
 
 
