@@ -17,6 +17,7 @@ PEFT_METHODS = {
     "LayerNormSurgery": {"peft_rank": 2},
     }
 
+
 def write_batch_script(
     env_name,
     save_root,
@@ -107,8 +108,6 @@ def cpkt_exists(cpkt_name, args):
 
 def run_peft_finetuning(args):
     for dataset, domain in ALL_DATASETS.items():
-        if dataset != "orgasegment":
-            continue
         gen_model = f"vit_b_{domain}"
         for model in ["vit_b", gen_model]:
             # full finetuning

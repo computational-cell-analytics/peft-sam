@@ -3,7 +3,6 @@ import shutil
 from glob import glob
 from tqdm import tqdm
 from pathlib import Path
-from math import ceil, floor
 
 import h5py
 import numpy as np
@@ -12,6 +11,7 @@ from skimage.measure import label as connected_components
 
 from torch_em.data import datasets
 from torch_em.transform.raw import normalize, normalize_percentile
+from torch_em.transform.generic import ResizeLongestSideInputs
 
 import nifty.tools as nt
 
@@ -72,6 +72,7 @@ def get_best_crops(raw, labels, desired_shape):
     # Total number of patches that fit into the image
     n_patches = (shape[0] // desired_shape[0]) * (shape[1] // desired_shape[1])
     assert n_patches > 0, "Chosen patch shape is too big for the image"
+
     patches = []
     valid_patches = []
 
@@ -107,6 +108,17 @@ def get_best_crops(raw, labels, desired_shape):
     return raw_patches, label_patches
 
 
+def resize_image(raw, label, crop_shape):
+    # for hpa
+    resize_transform = ResizeLongestSideInputs(target_shape=crop_shape)
+    resize_label_transform = ResizeLongestSideInputs(target_shape=crop_shape, is_label=True)
+
+    raw = resize_transform(raw)
+    label = resize_label_transform(label)
+
+    return raw, label
+
+
 def save_to_tif(i, raw, label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name):
 
     if crop_shape is not None:
@@ -130,7 +142,7 @@ def save_to_tif(i, raw, label, crop_shape, raw_dir, labels_dir, do_connected_com
 
 def from_h5_to_tif(
     h5_vol_path, raw_key, raw_dir, labels_key, labels_dir, slice_prefix_name, do_connected_components=True,
-    interface=h5py, crop_shape=None, roi_slices=None
+    interface=h5py, crop_shape=None, roi_slices=None, resize_longest_side=False
 ):
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(labels_dir, exist_ok=True)
@@ -152,6 +164,9 @@ def from_h5_to_tif(
             raw, labels = raw[None], labels[None]
 
         if raw.ndim == 3 and labels.ndim == 3:  # when we have a volume or mono-channel image
+            if resize_longest_side: # hpa
+                raw, labels = resize_image(raw, labels, crop_shape)
+                crop_shape = None
             for i, (_raw, _label) in tqdm(enumerate(zip(raw, labels)), total=raw.shape[0], desc=h5_vol_path):
                 save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components,
                             slice_prefix_name)
@@ -265,9 +280,6 @@ def for_mitolab(save_path):
             raw_path = os.path.join(save_path, dataset_id, "raw", f"{dataset_id}_{i+1:05}.tif")
             labels_path = os.path.join(save_path, dataset_id, "labels", f"{dataset_id}_{i+1:05}.tif")
 
-            slice_em = normalize(slice_em)
-            slice_em = slice_em * 255
-
             imageio.imwrite(raw_path, slice_em, compression="zlib")
             imageio.imwrite(labels_path, instances, compression="zlib")
 
@@ -335,12 +347,15 @@ def for_orgasegment(save_path):
                 _raw = normalize(_raw)
                 _raw = _raw * 255
 
-                imageio.imwrite(
-                    os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _raw
-                )
-                imageio.imwrite(
-                    os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _labels
-                )
+                if has_foreground(_labels):
+                    _labels = connected_components(_labels)
+
+                    imageio.imwrite(
+                        os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _raw
+                    )
+                    imageio.imwrite(
+                        os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _labels
+                    )
 
 
 def for_gonuclear(save_path):
@@ -384,7 +399,8 @@ def for_hpa(save_dir):
                 labels_key="labels",
                 labels_dir=os.path.join(save_dir, split, "labels"),
                 slice_prefix_name=f"hpa_{split}_{vol_id}",
-                crop_shape=(1728, 1728)
+                crop_shape=(512, 512),
+                resize_longest_side=True
             )
 
     save_slices_per_split(hpa_val_vols, "val")
@@ -400,9 +416,9 @@ def download_all_datasets(path):
                                      patch_shape=(512, 512), download=True)
     datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512),
                                    segmentation_task="nuclei", download=True)
-    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="val", patch_shape=(1728, 1728),
+    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="val", patch_shape=(512, 512),
                                  channels=["protein"], download=True)
-    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="test", patch_shape=(1728, 1728),
+    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="test", patch_shape=(512, 512),
                                  channels=["protein"], download=True)
 
 

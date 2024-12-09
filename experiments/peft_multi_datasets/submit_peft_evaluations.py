@@ -9,8 +9,8 @@ ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitol
 
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
-    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "proj_size": 64},
     "ssf": {"peft_rank": 2},
+    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "proj_size": 64},
     "fact": {"peft_rank": 16, "dropout": 0.1},
     "AttentionSurgery": {"peft_rank": 2},
     "BiasSurgery": {"peft_rank": 2},
@@ -126,8 +126,6 @@ def run_peft_evaluations():
     tmp_folder = "./gpu_jobs"
 
     for dataset, domain in ALL_DATASETS.items():
-        if dataset != 'orgasegment':
-            continue
         preprocess_data(dataset)
         gen_model = f"vit_b_{domain}"
         for model in ["vit_b", gen_model]:
@@ -161,7 +159,7 @@ def run_peft_evaluations():
                         model_type=model,
                         experiment_folder=result_path,
                         dataset=dataset
-            )
+                    )
             # run frozen encoder
             checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/freeze_encoder/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
@@ -195,6 +193,7 @@ def run_peft_evaluations():
                         model_type=model,
                         experiment_folder=result_path,
                         dataset=dataset,
+                        peft_method=peft_method,
                         **peft_kwargs
                     )
 

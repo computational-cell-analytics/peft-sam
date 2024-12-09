@@ -85,8 +85,11 @@ def _fetch_loaders(dataset_name, data_root):
     elif dataset_name == "orgasegment":
         # 2. OrgaSegment has internal splits provided. We follow the respective splits for our experiments.
 
-        raw_transform = RawTrafo(desired_shape=(512, 512), triplicate_dims=True)
-        label_transform = ResizeLabelTrafo((512, 512))
+        raw_transform = RawTrafo(desired_shape=(512, 512), triplicate_dims=True, do_padding=False)
+        label_transform = PerObjectDistanceTransform(
+            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
+            min_size=2
+        )
 
         train_loader = light_microscopy.get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
@@ -118,13 +121,13 @@ def _fetch_loaders(dataset_name, data_root):
         train_rois = np.s_[0:175, :, :]
         val_rois = np.s_[175:225, :, :]
 
-        raw_transform = RawTrafo((1, 383, 765))
-        label_transform = ResizeLabelTrafo((1, 383, 765))
+        raw_transform = RawTrafo((512, 512), do_padding=True)
+        label_transform = ResizeLabelTrafo((512, 512), min_size=2)
         train_loader = electron_microscopy.cem.get_benchmark_loader(
             path=os.path.join(data_root, "mitolab"),
             dataset_id=3,
             batch_size=2,
-            patch_shape=(1, 383, 765),
+            patch_shape=(1, 512, 512),
             download=False,
             num_workers=16,
             shuffle=True,
@@ -138,7 +141,7 @@ def _fetch_loaders(dataset_name, data_root):
             path=os.path.join(data_root, "mitolab"),
             dataset_id=3,
             batch_size=2,
-            patch_shape=(1, 383, 765),
+            patch_shape=(1, 512, 512),
             download=False,
             num_workers=16,
             shuffle=True,
@@ -162,7 +165,7 @@ def _fetch_loaders(dataset_name, data_root):
         }
 
         raw_transform = RawTrafo((1, 512, 512))
-        label_transform = ResizeLabelTrafo((512, 512))
+        label_transform = ResizeLabelTrafo((512, 512), min_size=2)
 
         train_loader = electron_microscopy.get_platynereis_cilia_loader(
             path=os.path.join(data_root, "platynereis"),
@@ -200,8 +203,8 @@ def _fetch_loaders(dataset_name, data_root):
             segmentation_task="nuclei",
             download=True,
             sample_ids=[1135, 1136, 1137],
-            raw_transform=RawTrafo((1, 1024, 1024)),
-            label_transform=ResizeLabelTrafo((1024, 1024)),
+            raw_transform=RawTrafo((512, 512)),
+            label_transform=ResizeLabelTrafo((512, 512), min_size=2),
             num_workers=16,
             sampler=MinInstanceSampler(),
             ndim=2
@@ -213,41 +216,44 @@ def _fetch_loaders(dataset_name, data_root):
             segmentation_task="nuclei",
             download=True,
             sample_ids=[1139],
-            raw_transform=RawTrafo((1, 1024, 1024)),
-            label_transform=ResizeLabelTrafo((1024, 1024)),
+            raw_transform=RawTrafo((512, 512)),
+            label_transform=ResizeLabelTrafo((512, 512), min_size=2),
             num_workers=16,
             sampler=MinInstanceSampler(),
             ndim=2
         )
 
     elif dataset_name == "hpa":
+
         label_transform = PerObjectDistanceTransform(
             distances=True, boundary_distances=True, directed_distances=False,
-            foreground=True, instances=True, min_size=0
+            foreground=True, instances=True, min_size=2
         )
         train_loader = get_hpa_segmentation_loader(
             path=os.path.join(data_root, "hpa"),
             split="train",
-            patch_shape=(1728, 1728),
+            patch_shape=(512, 512),
             batch_size=2,
             channels=["protein"],
             download=True,
             n_workers_preproc=16,
-            raw_transform=RawTrafo((1728, 1728)),
+            raw_transform=RawTrafo((512, 512), do_padding=False),
             label_transform=label_transform,
             sampler=MinInstanceSampler(),
+            ndim=2
         )
         val_loader = get_hpa_segmentation_loader(
             path=os.path.join(data_root, "hpa"),
             split="val",
-            patch_shape=(1728, 1728),
+            patch_shape=(512, 512),
             batch_size=2,
             channels=["protein"],
             download=True,
             n_workers_preproc=16,
-            raw_transform=RawTrafo((1728, 1728)),
+            raw_transform=RawTrafo((512, 512), do_padding=False),
             label_transform=label_transform,
             sampler=MinInstanceSampler(),
+            ndim=2
         )
 
     else:
