@@ -4,7 +4,7 @@ import subprocess
 from datetime import datetime
 
 ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles', 'hpa': 'lm'}
+                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm'}
 
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
@@ -109,7 +109,8 @@ def cpkt_exists(cpkt_name, args):
 def run_peft_finetuning(args):
     for dataset, domain in ALL_DATASETS.items():
         gen_model = f"vit_b_{domain}"
-        for model in ["vit_b", gen_model]:
+        models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
+        for model in models:
             # full finetuning
             checkpoint_name = f"{model}/full_ft/{dataset}_sam"
             if not cpkt_exists(checkpoint_name, args):
