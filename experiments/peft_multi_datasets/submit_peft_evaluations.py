@@ -5,7 +5,7 @@ from datetime import datetime
 from peft_sam.preprocess_datasets import preprocess_data
 
 ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles', 'hpa': 'lm'}
+                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell', 'lm'}
 
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
@@ -128,7 +128,8 @@ def run_peft_evaluations():
     for dataset, domain in ALL_DATASETS.items():
         preprocess_data(dataset)
         gen_model = f"vit_b_{domain}"
-        for model in ["vit_b", gen_model]:
+        models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
+        for model in models:
             # run generalist / vanilla
             modality = "generalist" if model == gen_model else "vanilla"
             result_path = os.path.join(EXPERIMENT_ROOT, modality, dataset)
