@@ -12,7 +12,7 @@ from torch_em.data.datasets import light_microscopy, electron_microscopy
 import micro_sam.training as sam_training
 from micro_sam.training.util import ResizeLabelTrafo
 
-from .util import RawTrafo
+from ..util import RawTrafo
 
 
 def _fetch_loaders(dataset_name, data_root):
