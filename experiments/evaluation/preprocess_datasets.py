@@ -130,6 +130,7 @@ def _process_amd_sd_data(data_path, view):
 
 
 def _process_mice_tumseg_data(data_path, view):
+    # Adjusting the data alignment with switching axes.
     def _raw_trafo(raw):
         raw = raw.transpose(0, 2, 1)
         return raw
