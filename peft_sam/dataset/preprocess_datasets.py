@@ -9,10 +9,14 @@ import numpy as np
 import imageio.v3 as imageio
 from skimage.measure import label as connected_components
 
-from elf.wrapper import RoiWrapper
-
 from torch_em.data import datasets
 from torch_em.transform.raw import normalize, normalize_percentile
+from torch_em.transform.generic import ResizeLongestSideInputs
+
+import nifty.tools as nt
+
+from elf.wrapper import RoiWrapper
+from peft_sam.hpa import get_hpa_segmentation_dataset
 
 
 ROOT = "/scratch/usr/nimcarot/data/"
@@ -30,6 +34,8 @@ def preprocess_data(dataset):
         for_orgasegment(os.path.join(ROOT, "orgasegment", "slices"))
     elif dataset == "gonuclear":
         for_gonuclear(os.path.join(ROOT, "gonuclear", "slices"))
+    elif dataset == "hpa":
+        for_hpa(os.path.join(ROOT, "hpa", "slices"))
 
 
 def convert_rgb(raw):
@@ -47,42 +53,96 @@ def has_foreground(label):
         return False
 
 
-def make_center_crop(image, desired_shape):
-    if image.shape < desired_shape:
-        return image
-
-    center_coords = (int(image.shape[0] / 2), int(image.shape[1] / 2))
-    tolerances = (int(desired_shape[0] / 2), int(desired_shape[1] / 2))
-
-    # let's take the center crop from the image
-    cropped_image = image[
-        center_coords[0] - tolerances[0]: center_coords[0] + tolerances[0],
-        center_coords[1] - tolerances[1]: center_coords[1] + tolerances[1]
-    ]
-    return cropped_image
+def slices_overlap(slice1, slice2):
+    """Check if two slices overlap in any dimension."""
+    return not (
+        slice1[0].stop <= slice2[0].start or  # No overlap in the first dimension
+        slice1[0].start >= slice2[0].stop or
+        slice1[1].stop <= slice2[1].start or  # No overlap in the second dimension
+        slice1[1].start >= slice2[1].stop
+    )
 
 
-def save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name):
+def get_best_crops(raw, labels, desired_shape):
+    shape = raw.shape[:2]
+    ndim = 2
+    blocking = nt.blocking([0] * ndim, shape, desired_shape)
+    n_blocks = blocking.numberOfBlocks
+
+    # Total number of patches that fit into the image
+    n_patches = (shape[0] // desired_shape[0]) * (shape[1] // desired_shape[1])
+    assert n_patches > 0, "Chosen patch shape is too big for the image"
+
+    patches = []
+    valid_patches = []
+
+    # get all possible blocks
+    for block_id in range(n_blocks):
+        block = blocking.getBlock(block_id)
+        bb = tuple(slice(beg, end) for beg, end in zip(block.begin, block.end))
+        # only allow blocks that have the desired shape
+        if raw[bb].shape[:2] == desired_shape:
+            patches.append(bb)
+
+    # Extract the patches with the most instances and remove all patches that overlap with the best patch.
+    # Repeat we have the correct number of valid patches.
+    while len(valid_patches) < n_patches:
+        max_idx = 0
+        max_objects = 0
+        for i in range(len(patches)):
+            n_objects = len(np.unique(labels[patches[i]]))
+            if n_objects > max_objects:
+                max_objects = n_objects
+                max_idx = i
+        valid_patches.append(patches.pop(max_idx))
+        for patch in patches:
+            if slices_overlap(valid_patches[-1], patch):
+                patches.remove(patch)
+
+    raw_patches = []
+    label_patches = []
+    for slice_ in valid_patches:
+        raw_patches.append(raw[slice_])
+        label_patches.append(labels[slice_])
+
+    return raw_patches, label_patches
+
+
+def resize_image(raw, label, crop_shape):
+    # for hpa
+    resize_transform = ResizeLongestSideInputs(target_shape=crop_shape)
+    resize_label_transform = ResizeLongestSideInputs(target_shape=crop_shape, is_label=True)
+
+    raw = resize_transform(raw)
+    label = resize_label_transform(label)
+
+    return raw, label
+
+
+def save_to_tif(i, raw, label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name):
+
     if crop_shape is not None:
-        _raw = make_center_crop(_raw, crop_shape)
-        _label = make_center_crop(_label, crop_shape)
+        raw, labels = get_best_crops(raw, label, crop_shape)
+    else:
+        raw, labels = [raw], [label]
+    for _raw, _label in zip(raw, labels):
+        if has_foreground(_label):
+            if do_connected_components:
+                instances = connected_components(_label)
+            else:
+                instances = _label
+            _raw = normalize(_raw)
+            _raw = _raw * 255
 
-    # we only save labels with foreground
-    if has_foreground(_label):
-        if do_connected_components:
-            instances = connected_components(_label)
-        else:
-            instances = _label
-
-        raw_path = os.path.join(raw_dir, f"{slice_prefix_name}_{i+1:05}.tif")
-        labels_path = os.path.join(labels_dir, f"{slice_prefix_name}_{i+1:05}.tif")
-        imageio.imwrite(raw_path, _raw, compression="zlib")
-        imageio.imwrite(labels_path, instances, compression="zlib")
+            raw_path = os.path.join(raw_dir, f"{slice_prefix_name}_{i+1:05}.tif")
+            labels_path = os.path.join(labels_dir, f"{slice_prefix_name}_{i+1:05}.tif")
+            imageio.imwrite(raw_path, _raw, compression="zlib")
+            imageio.imwrite(labels_path, instances, compression="zlib")
 
 
 def from_h5_to_tif(
     h5_vol_path, raw_key, raw_dir, labels_key, labels_dir, slice_prefix_name, do_connected_components=True,
-    interface=h5py, crop_shape=None, roi_slices=None, to_one_channel=False
+    interface=h5py, crop_shape=None, roi_slices=None, resize_longest_side=False
 ):
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(labels_dir, exist_ok=True)
@@ -96,11 +156,7 @@ def from_h5_to_tif(
         raw = f[raw_key][:]
         labels = f[labels_key][:]
 
-        if raw.ndim == 3 and raw.shape[0] == 3 and to_one_channel:  # for tissuenet
-            print("Got an RGB image, converting it to one-channel.")
-            raw = convert_rgb(raw)
-
-        if roi_slices is not None:  # for cremi
+        if roi_slices is not None:  # for platynereis cilia
             raw = RoiWrapper(raw, roi_slices)[:]
             labels = RoiWrapper(labels, roi_slices)[:]
 
@@ -108,19 +164,12 @@ def from_h5_to_tif(
             raw, labels = raw[None], labels[None]
 
         if raw.ndim == 3 and labels.ndim == 3:  # when we have a volume or mono-channel image
+            if resize_longest_side: # hpa
+                raw, labels = resize_image(raw, labels, crop_shape)
+                crop_shape = None
             for i, (_raw, _label) in tqdm(enumerate(zip(raw, labels)), total=raw.shape[0], desc=h5_vol_path):
-                save_to_tif(
-                    i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name
-                )
-
-        elif raw.ndim == 3 and labels.ndim == 2:  # when we have a multi-channel input (rgb)
-            if raw.shape[0] == 4:  # hpa has 4 channel inputs (0: microtubules, 1: protein, 2: nuclei, 3: er)
-                raw = raw[1:]
-
-            # making channels last (to make use of 3-channel inputs)
-            raw = raw.transpose(1, 2, 0)
-
-            save_to_tif(0, raw, labels, crop_shape, raw_dir, labels_dir, do_connected_components, slice_prefix_name)
+                save_to_tif(i, _raw, _label, crop_shape, raw_dir, labels_dir, do_connected_components,
+                            slice_prefix_name)
 
 
 def for_covid_if(save_path):
@@ -131,7 +180,7 @@ def for_covid_if(save_path):
         image_id = Path(image_path).stem
 
         image_save_dir = os.path.join(save_path, "val", "raw")
-        label_save_dir = os.path.join(save_path, "slices", "val", "labels")
+        label_save_dir = os.path.join(save_path, "val", "labels")
 
         os.makedirs(image_save_dir, exist_ok=True)
         os.makedirs(label_save_dir, exist_ok=True)
@@ -140,15 +189,21 @@ def for_covid_if(save_path):
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
 
-            imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
-            imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
+            raw, labels = get_best_crops(raw, labels, (512, 512))
+            for i, (raw_, labels_) in enumerate(zip(raw, labels)):
+
+                raw_ = normalize(raw_)
+                raw_ = raw_ * 255
+
+                imageio.imwrite(os.path.join(image_save_dir, f"{image_id}_{i}.tif"), raw_)
+                imageio.imwrite(os.path.join(label_save_dir, f"{image_id}_{i}.tif"), labels_)
 
     # test images
     for image_path in tqdm(all_image_paths[13:]):
         image_id = Path(image_path).stem
 
-        image_save_dir = os.path.join(Path(image_path).parent, "slices", "test", "raw")
-        label_save_dir = os.path.join(Path(image_path).parent, "slices", "test", "labels")
+        image_save_dir = os.path.join(save_path, "test", "raw")
+        label_save_dir = os.path.join(save_path, "test", "labels")
 
         os.makedirs(image_save_dir, exist_ok=True)
         os.makedirs(label_save_dir, exist_ok=True)
@@ -157,16 +212,22 @@ def for_covid_if(save_path):
             raw = f["raw/serum_IgG/s0"][:]
             labels = f["labels/cells/s0"][:]
 
-            imageio.imwrite(os.path.join(image_save_dir, f"{image_id}.tif"), raw)
-            imageio.imwrite(os.path.join(label_save_dir, f"{image_id}.tif"), labels)
+            raw, labels = get_best_crops(raw, labels, (512, 512))
+            for i, (raw_, labels_) in enumerate(zip(raw, labels)):
+
+                raw_ = normalize(raw_)
+                raw_ = raw_ * 255
+
+                imageio.imwrite(os.path.join(image_save_dir, f"{image_id}_{i}.tif"), raw_)
+                imageio.imwrite(os.path.join(label_save_dir, f"{image_id}_{i}.tif"), labels_)
 
 
 def for_platynereis(save_dir, choice="cilia"):
     """
     for cilia:
-        for training   : we take regions of training vol 1-3
-        for validation: we take regions of training vol 1-3
-        for test: we take validation vol 1
+        for training   : we take regions of training vol 1-2
+        for validation: we take regions of training vol 1-2
+        for test: we take train vol 3
 
     """
     roi_slice = np.s_[85:, :, :]
@@ -176,6 +237,7 @@ def for_platynereis(save_dir, choice="cilia"):
             vol_id = os.path.split(vol_path)[-1].split(".")[0][-2:]
 
             split = "test" if vol_id == "03" else "val"
+            crop_shape = None if vol_id == "01" else (512, 512)
             from_h5_to_tif(
                 h5_vol_path=vol_path,
                 raw_key="volumes/raw",
@@ -184,6 +246,7 @@ def for_platynereis(save_dir, choice="cilia"):
                 labels_dir=os.path.join(save_dir, choice, "labels"),
                 slice_prefix_name=f"platy_{choice}_{split}_{vol_id}",
                 roi_slices=roi_slice if split == "val" else None,
+                crop_shape=crop_shape,
             )
 
 
@@ -196,102 +259,66 @@ def for_mitolab(save_path):
     test_rois = np.s_[225:, :, :]
 
     """
-    all_dataset_ids = []
-    _roi_vol_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "mito_benchmarks", "*")))
+    vol_path = os.path.join(ROOT, "mitolab", "10982", "data", "mito_benchmarks", "glycolytic_muscle")
+    dataset_id = os.path.split(vol_path)[-1]
+    os.makedirs(os.path.join(save_path, dataset_id, "raw"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "labels"), exist_ok=True)
 
-    for vol_path in _roi_vol_paths:
-        dataset_id = os.path.split(vol_path)[-1]
-        all_dataset_ids.append(dataset_id)
+    em_path = glob(os.path.join(vol_path, "*_em.tif"))[0]
+    mito_path = glob(os.path.join(vol_path, "*_mito.tif"))[0]
 
-        os.makedirs(os.path.join(save_path, dataset_id, "raw"), exist_ok=True)
-        os.makedirs(os.path.join(save_path, dataset_id, "labels"), exist_ok=True)
+    vem = imageio.imread(em_path)
+    vmito = imageio.imread(mito_path)
 
-        em_path = glob(os.path.join(vol_path, "*_em.tif"))[0]
-        mito_path = glob(os.path.join(vol_path, "*_mito.tif"))[0]
+    for i, (slice_em, slice_mito) in tqdm(
+        enumerate(zip(vem, vmito)), total=len(vem), desc=f"Processing {dataset_id}"
+    ):
 
-        vem = imageio.imread(em_path)
-        vmito = imageio.imread(mito_path)
+        if has_foreground(slice_mito):
+            instances = connected_components(slice_mito)
 
-        for i, (slice_em, slice_mito) in tqdm(
-            enumerate(zip(vem, vmito)), total=len(vem), desc=f"Processing {dataset_id}"
-        ):
+            raw_path = os.path.join(save_path, dataset_id, "raw", f"{dataset_id}_{i+1:05}.tif")
+            labels_path = os.path.join(save_path, dataset_id, "labels", f"{dataset_id}_{i+1:05}.tif")
 
-            if Path(em_path).stem.startswith("salivary_gland"):
-                slice_em = make_center_crop(slice_em, (1024, 1024))
-                slice_mito = make_center_crop(slice_mito, (1024, 1024))
+            imageio.imwrite(raw_path, slice_em, compression="zlib")
+            imageio.imwrite(labels_path, instances, compression="zlib")
 
-            if has_foreground(slice_mito):
-                instances = connected_components(slice_mito)
-
-                raw_path = os.path.join(save_path, dataset_id, "raw", f"{dataset_id}_{i+1:05}.tif")
-                labels_path = os.path.join(save_path, dataset_id, "labels", f"{dataset_id}_{i+1:05}.tif")
-
-                imageio.imwrite(raw_path, slice_em, compression="zlib")
-                imageio.imwrite(labels_path, instances, compression="zlib")
-
-    # now, let's work on the tem dataset
-    image_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "tem_benchmark", "images", "*")))
-    mask_paths = sorted(glob(os.path.join(ROOT, "mitolab", "10982", "data", "tem_benchmark", "masks", "*")))
-
-    os.makedirs(os.path.join(save_path, "tem", "raw"), exist_ok=True)
-    os.makedirs(os.path.join(save_path, "tem", "labels"), exist_ok=True)
-
-    # let's move the tem data to slices
-    for image_path, mask_path in tqdm(zip(image_paths, mask_paths), desc="Preprocessimg tem", total=len(image_paths)):
-        sample_id = os.path.split(image_path)[-1]
-        image_dst = os.path.join(save_path, "tem", "raw", sample_id)
-        mask_dst = os.path.join(save_path, "tem", "labels", sample_id)
-
-        tem_image = make_center_crop(imageio.imread(image_path), (768, 768))
-        tem_mask = make_center_crop(imageio.imread(mask_path), (768, 768))
-
-        if has_foreground(tem_mask):
-            imageio.imwrite(image_dst, tem_image)
-            imageio.imwrite(mask_dst, tem_mask)
-
-    all_dataset_ids.append("tem")
-
-    for dataset_id in all_dataset_ids:
-        make_custom_splits(save_dir=os.path.join(save_path, dataset_id))
-
-
-def make_custom_splits(save_dir):
     def move_samples(split, all_raw_files, all_label_files):
         for raw_path, label_path in (zip(all_raw_files, all_label_files)):
             # let's move the raw slice
             slice_id = os.path.split(raw_path)[-1]
-            dst = os.path.join(save_dir, split, "raw", slice_id)
+            dst = os.path.join(save_path, dataset_id, split, "raw", slice_id)
             shutil.move(raw_path, dst)
 
             # let's move the label slice
             slice_id = os.path.split(label_path)[-1]
-            dst = os.path.join(save_dir, split, "labels", slice_id)
+            dst = os.path.join(save_path, dataset_id, split, "labels", slice_id)
             shutil.move(label_path, dst)
 
     # make a custom splitting logic
     # 1. move to val dir
-    os.makedirs(os.path.join(save_dir, "val", "raw"), exist_ok=True)
-    os.makedirs(os.path.join(save_dir, "val", "labels"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "val", "raw"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "val", "labels"), exist_ok=True)
 
     move_samples(
         split="val",
-        all_raw_files=sorted(glob(os.path.join(save_dir, "raw", "*")))[175:225],
-        all_label_files=sorted(glob(os.path.join(save_dir, "labels", "*")))[175:225]
+        all_raw_files=sorted(glob(os.path.join(save_path, dataset_id, "raw", "*")))[175:225],
+        all_label_files=sorted(glob(os.path.join(save_path, dataset_id, "labels", "*")))[175:225]
     )
 
     # 2. move to test dir
-    os.makedirs(os.path.join(save_dir, "test", "raw"), exist_ok=True)
-    os.makedirs(os.path.join(save_dir, "test", "labels"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "test", "raw"), exist_ok=True)
+    os.makedirs(os.path.join(save_path, dataset_id, "test", "labels"), exist_ok=True)
 
     move_samples(
         split="test",
-        all_raw_files=sorted(glob(os.path.join(save_dir, "raw", "*")))[225:],
-        all_label_files=sorted(glob(os.path.join(save_dir, "labels", "*")))[225:]
+        all_raw_files=sorted(glob(os.path.join(save_path, dataset_id, "raw", "*")))[175:],
+        all_label_files=sorted(glob(os.path.join(save_path, dataset_id, "labels", "*")))[175:]
     )
 
     # let's remove the left-overs
-    shutil.rmtree(os.path.join(save_dir, "raw"))
-    shutil.rmtree(os.path.join(save_dir, "labels"))
+    shutil.rmtree(os.path.join(save_path, dataset_id, "raw"))
+    shutil.rmtree(os.path.join(save_path, dataset_id, "labels"))
 
 
 def for_orgasegment(save_path):
@@ -313,8 +340,22 @@ def for_orgasegment(save_path):
             image = imageio.imread(image_path)
             label = imageio.imread(label_path)
 
-            imageio.imwrite(os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}.tif"), image)
-            imageio.imwrite(os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}.tif"), label)
+            raw, labels = get_best_crops(image, label, (512, 512))
+
+            for j, (_raw, _labels) in enumerate(zip(raw, labels)):
+
+                _raw = normalize(_raw)
+                _raw = _raw * 255
+
+                if has_foreground(_labels):
+                    _labels = connected_components(_labels)
+
+                    imageio.imwrite(
+                        os.path.join(save_path, _split, "raw", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _raw
+                    )
+                    imageio.imwrite(
+                        os.path.join(save_path, _split, "labels", f"orgasegment_{_split}_{i+1:05}_{j}.tif"), _labels
+                    )
 
 
 def for_gonuclear(save_path):
@@ -327,8 +368,8 @@ def for_gonuclear(save_path):
         raw_dir=os.path.join(save_path, "val", "raw"),
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "val", "labels"),
-        slice_prefix_name="gonuclear_val_1129",
-        roi_slices=None
+        slice_prefix_name="gonuclear_val_1139",
+        crop_shape=(1024, 1024)
     )
     from_h5_to_tif(
         h5_vol_path=go_nuclear_test_vol,
@@ -337,8 +378,33 @@ def for_gonuclear(save_path):
         labels_key="labels/nuclei",
         labels_dir=os.path.join(save_path, "test", "labels"),
         slice_prefix_name="gonuclear_test_1170",
-        roi_slices=None
     )
+
+
+def for_hpa(save_dir):
+    """
+    take the last 58 volumes from the train split for validation and use the validation split for testing
+    """
+    hpa_val_vols = sorted(glob(os.path.join(ROOT, "hpa", "train", "*.h5")))[210:]
+    hpa_test_vols = sorted(glob(os.path.join(ROOT, "hpa", "val", "*.h5")))
+
+    def save_slices_per_split(all_vol_paths, split):
+        for vol_path in all_vol_paths:
+            vol_id = Path(vol_path).stem
+
+            from_h5_to_tif(
+                h5_vol_path=vol_path,
+                raw_key="raw/protein",
+                raw_dir=os.path.join(save_dir, split, "raw"),
+                labels_key="labels",
+                labels_dir=os.path.join(save_dir, split, "labels"),
+                slice_prefix_name=f"hpa_{split}_{vol_id}",
+                crop_shape=(512, 512),
+                resize_longest_side=True
+            )
+
+    save_slices_per_split(hpa_val_vols, "val")
+    save_slices_per_split(hpa_test_vols, "test")
 
 
 def download_all_datasets(path):
@@ -350,6 +416,10 @@ def download_all_datasets(path):
                                      patch_shape=(512, 512), download=True)
     datasets.get_gonuclear_dataset(os.path.join(path, "gonuclear"), patch_shape=(1, 512, 512),
                                    segmentation_task="nuclei", download=True)
+    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="val", patch_shape=(512, 512),
+                                 channels=["protein"], download=True)
+    get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="test", patch_shape=(512, 512),
+                                 channels=["protein"], download=True)
 
 
 def main():
@@ -361,6 +431,7 @@ def main():
     preprocess_data("mitolab")
     preprocess_data("orgasegment")
     preprocess_data("gonuclear")
+    preprocess_data("hpa")
 
 
 if __name__ == "__main__":
