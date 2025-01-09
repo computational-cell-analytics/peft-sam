@@ -1,0 +1,18 @@
+channels:
+    - pytorch
+    - nvidia
+    - conda-forge
+name:
+    peft-sam
+dependencies:
+    - pytorch >=2.0
+    - pytorch-cuda =11.8
+    - torchvision
+    - torchaudio
+    - micro_sam
+    - natsort
+    - python-xxhash
+    - pycocotools
+    - imagecodecs
+    - pip:
+        - bitsandbytes

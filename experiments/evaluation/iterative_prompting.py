@@ -2,6 +2,7 @@ import os
 
 from micro_sam.evaluation import inference
 from micro_sam.evaluation.evaluation import run_evaluation_for_iterative_prompting
+
 from peft_sam.util import get_peft_kwargs
 
 from util import get_paths  # comment this and create a custom function with the same name to run int. seg. on your data
