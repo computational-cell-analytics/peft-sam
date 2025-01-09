@@ -12,22 +12,21 @@ from torch_em.data.datasets import light_microscopy, electron_microscopy
 import micro_sam.training as sam_training
 from micro_sam.training.util import ResizeLabelTrafo
 
-from peft_sam.util import RawTrafo
-from peft_sam.dataset.hpa import get_hpa_segmentation_loader
-from peft_sam.dataset.gonuclear import get_gonuclear_loader
-from peft_sam.dataset.orgasegment import get_orgasegment_loader
-from peft_sam.dataset.livecell import get_livecell_loader
+from ..util import RawTrafo
+from . import (
+    get_hpa_segmentation_loader, get_livecell_loader, get_gonuclear_loader, get_orgasegment_loader
+)
 
 
 def _fetch_loaders(
-        dataset_name,
-        data_root,
-        train_sample_range=None,
-        val_sample_range=None,
-        train_rois=None,
-        val_rois=None,
-        n_train_samples=None,
-        n_val_samples=None
+    dataset_name,
+    data_root,
+    train_sample_range=None,
+    val_sample_range=None,
+    train_rois=None,
+    val_rois=None,
+    n_train_samples=None,
+    n_val_samples=None
 ):
     if dataset_name == "covid_if":
 
@@ -324,12 +323,11 @@ def _fetch_loaders(
 
 
 def _verify_loaders():
-
-    for dataset_name in ["covid_if", "livecell", "orgasegment", "mitolab_glycolytic_muscle", "platy_cilia",
-                         "gonuclear", "hpa"]:
+    for dataset_name in [
+        "covid_if", "livecell", "orgasegment", "mitolab_glycolytic_muscle", "platy_cilia", "gonuclear", "hpa"
+    ]:
         train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name, data_root="/scratch/usr/nimcarot/data")
 
-        # breakpoint()
         # NOTE: if using on the cluster, napari visualization won't work with "check_loader".
         # turn "plt=True" and provide path to save the matplotlib outputs of the loader.
         check_loader(train_loader, 8, plt=True, save_path=f"./{dataset_name}_train_loader.png")
