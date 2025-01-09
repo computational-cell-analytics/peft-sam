@@ -5,13 +5,16 @@ from datetime import datetime
 from peft_sam.preprocess_datasets import preprocess_data
 
 ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles', 'hpa': 'lm'}
+                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm'}
 
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
-    "adaptformer": {"alpha": 1, "dropout": None, "projection_size": 64},
-    "ssf": {},
-    "fact": {"peft_rank": 32, "dropout": 0.1},
+    "ssf": {"peft_rank": 2},
+    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "proj_size": 64},
+    "fact": {"peft_rank": 16, "dropout": 0.1},
+    "AttentionSurgery": {"peft_rank": 2},
+    "BiasSurgery": {"peft_rank": 2},
+    "LayerNormSurgery": {"peft_rank": 2},
     }
 
 ALL_SCRIPTS = [
@@ -125,7 +128,8 @@ def run_peft_evaluations():
     for dataset, domain in ALL_DATASETS.items():
         preprocess_data(dataset)
         gen_model = f"vit_b_{domain}"
-        for model in ["vit_b", gen_model]:
+        models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
+        for model in models:
             # run generalist / vanilla
             modality = "generalist" if model == gen_model else "vanilla"
             result_path = os.path.join(EXPERIMENT_ROOT, modality, dataset)
@@ -141,10 +145,26 @@ def run_peft_evaluations():
                         experiment_folder=result_path,
                         dataset=dataset
                     )
+            # full finetuning
+            checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/full_ft/{dataset}_sam/best.pt"
+            assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
+            result_path = os.path.join(EXPERIMENT_ROOT, "full_ft", model, dataset)
+            if not os.path.exists(result_path):
+                os.makedirs(result_path, exist_ok=False)
+                for current_setup in ALL_SCRIPTS:
+                    write_batch_script(
+                        env_name="sam",
+                        out_path=get_batch_script_names(tmp_folder),
+                        inference_setup=current_setup,
+                        checkpoint=checkpoint,
+                        model_type=model,
+                        experiment_folder=result_path,
+                        dataset=dataset
+                    )
             # run frozen encoder
             checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/freeze_encoder/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", dataset)
+            result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", model, dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
                 for current_setup in ALL_SCRIPTS:
@@ -158,10 +178,10 @@ def run_peft_evaluations():
                         dataset=dataset
                     )
             # run peft methods
-            for peft_method, peft_kwargs in PEFT_METHODS:
+            for peft_method, peft_kwargs in PEFT_METHODS.items():
                 checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-                result_path = os.path.join(EXPERIMENT_ROOT, peft_method, dataset)
+                result_path = os.path.join(EXPERIMENT_ROOT, peft_method, model, dataset)
                 if os.path.exists(result_path):
                     continue
                 os.makedirs(result_path, exist_ok=False)
@@ -174,7 +194,8 @@ def run_peft_evaluations():
                         model_type=model,
                         experiment_folder=result_path,
                         dataset=dataset,
-                        *peft_kwargs
+                        peft_method=peft_method,
+                        **peft_kwargs
                     )
 
 

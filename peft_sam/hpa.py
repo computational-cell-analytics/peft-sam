@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch_em.data.datasets.util import split_kwargs, add_instance_label_transform, update_kwargs
 from torch_em import default_segmentation_dataset, get_data_loader
 from torch_em.data.datasets.light_microscopy.hpa import get_hpa_segmentation_data
+from torch_em.data.datasets.util import update_kwargs_for_resize_trafo
 
 
 def get_hpa_segmentation_dataset(
@@ -43,6 +44,11 @@ def get_hpa_segmentation_dataset(
     kwargs, _ = add_instance_label_transform(
         kwargs, add_binary_target=True, binary=binary, boundaries=boundaries, offsets=offsets
     )
+
+    kwargs, patch_shape = update_kwargs_for_resize_trafo(
+       kwargs=kwargs, patch_shape=patch_shape, resize_inputs=True, resize_kwargs={"patch_shape": patch_shape, "is_rgb": False}
+    )
+
     kwargs = update_kwargs(kwargs, "ndim", 2)
     kwargs = update_kwargs(kwargs, "with_channels", True)
 
