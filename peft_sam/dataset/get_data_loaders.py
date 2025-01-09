@@ -1,16 +1,19 @@
 import os
 
 import numpy as np
+
 import torch
 
 from torch_em.util.debug import check_loader
 from torch_em.data import MinInstanceSampler
-from torch_em.data.datasets import light_microscopy, electron_microscopy
 from torch_em.transform.label import PerObjectDistanceTransform
+from torch_em.data.datasets import light_microscopy, electron_microscopy
+
 import micro_sam.training as sam_training
 from micro_sam.training.util import ResizeLabelTrafo
-from peft_sam.util import RawTrafo
-from peft_sam.hpa import get_hpa_segmentation_loader
+
+from ..util import RawTrafo
+from ..hpa import get_hpa_segmentation_loader
 
 
 def _fetch_loaders(dataset_name, data_root):

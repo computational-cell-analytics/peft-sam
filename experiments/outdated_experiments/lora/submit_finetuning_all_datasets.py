@@ -197,7 +197,7 @@ def run_scaling_factor_exp_c(args):
     rank = 32
     lr = 1e-5
 
-    for alpha in alphas:    
+    for alpha in alphas:
         for model in ["vit_b", "vit_b_lm"]:
             script_name = get_batch_script_names("./gpu_jobs")
             peft_method = "lora"

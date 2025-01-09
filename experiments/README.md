@@ -1,15 +1,15 @@
-## Low Rank Adaptation Methods on Segment Anything for LIVECell
+## Parameter Efficient Finetuning Methods of Segment Anything for Microscopy.
 
-Insights:
-- There's no real memory advantage actually unless it's truly scaled up. For instance:
-    - `vit_b`:
-        - SAM: 93M (takes ~50GB)
-        - SAM-LoRA: 4.4M (takes ~61GB)
-    - `vit_l`:
-        - SAM: 312M (takes ~63GB)
-        - SAM-LoRA: 4.4M (takes ~61GB)
-    - `vit_h`:
-        - SAM: 641M (takes ~73GB)
-        - SAM-LoRA: 4.7M (takes ~67GB)
+Insights on Memory Engagement:
+- `vit_b`
+    - freeze_encoder: ~ 33.89 GB
+    - QLoRA: ~48.54 GB
+    - LoRA: ~48.62 GB
+    - FFT: ~49.56 GB
 
-- Question: Would quantization lead to better results? (e.g. QLoRA) or parallel adaptation? (e.g. DoRA)
+- `vit_h`
+    - freeze_encoder: ~36.05 GB
+    - QLoRA: ~ 65.68 GB
+    - LoRA: ~ 67.14 GB
+    - FFT: ~72.34 GB
+
