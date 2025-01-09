@@ -378,13 +378,9 @@ def _verify_loaders():
 
     for dataset_name in ["covid_if", "livecell", "orgasegment", "mitolab_glycolytic_muscle", "platy_cilia",
                          "gonuclear", "hpa"]:
-        if dataset_name != "covid_if":
-            continue
         train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name, data_root="/scratch/usr/nimcarot/data")
 
         # breakpoint()
-        # NOTE: if using on the cluster, napari visualization won't work with "check_loader".
-        # turn "plt=True" and provide path to save the matplotlib outputs of the loader.
         check_loader(train_loader, 1, plt=True, save_path=f"./{dataset_name}_train_loader.png")
         check_loader(val_loader, 1, plt=True, save_path=f"./{dataset_name}_val_loader.png")
 
