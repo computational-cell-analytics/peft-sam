@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
-from peft_sam.preprocess_datasets import preprocess_data
+from peft_sam.dataset.preprocess_datasets import preprocess_data
 
 ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
                 'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm'}

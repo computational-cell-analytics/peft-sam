@@ -1,13 +1,28 @@
 import os
 import argparse
+import numpy as np
 
 import torch
 
-from peft_sam.util import get_peft_kwargs
 import micro_sam.training as sam_training
 from micro_sam.util import export_custom_sam_model
 
-from single_img_data_loaders import _fetch_loaders
+from peft_sam.util import get_peft_kwargs
+from peft_sam.dataset.get_data_loaders import _fetch_loaders
+
+# Define the sample range and rois for the selected images
+SAMPLE_DATA = {
+    'covid_if': {'train_sample_range': (0, 1), 'val_sample_range': (10, 11), 'train_rois': None, 'val_rois': None},
+    'livecell': {'train_sample_range': (2, 3), 'val_sample_range': (25, 26), 'train_rois': None, 'val_rois': None},
+    'orgasegment': {'train_sample_range': (0, 1), 'val_sample_range': (0, 1), 'train_rois': None, 'val_rois': None},
+    'mitolab_glycolytic_muscle': {'train_sample_range': None, 'val_sample_range': None,
+                                  'train_rois': np.s_[20:21, :, :], 'val_rois': np.s_[180:181, :, :]},
+    'platy_cilia': {'train_sample_range': None, 'val_sample_range': None, 'train_rois': {2: np.s_[49:50, :, :]},
+                    'val_rois': {2: np.s_[65:66, :, :]}},
+    'gonuclear': {'train_sample_range': None, 'val_sample_range': None, 'train_rois': {1136: np.s_[60:61, :, :]},
+                  'val_rois': {1139: np.s_[40:41, :, :]}},
+    'hpa': {'train_sample_range': (1, 2), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
+}
 
 
 def finetune(args):
@@ -34,7 +49,23 @@ def finetune(args):
         checkpoint_name = f"{args.model_type}/full_ft/{dataset}_sam"
 
     # all the stuff we need for training
-    train_loader, val_loader = _fetch_loaders(dataset, args.input_path)
+    train_sample_range = SAMPLE_DATA[dataset]['train_sample_range']
+    val_sample_range = SAMPLE_DATA[dataset]['val_sample_range']
+    train_rois = SAMPLE_DATA[dataset]['train_rois']
+    val_rois = SAMPLE_DATA[dataset]['val_rois']
+
+    train_loader, val_loader = _fetch_loaders(
+        dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
+        train_rois=train_rois, val_rois=val_rois
+    )
+
+    n_samples_train = 50 if len(train_loader) < 50 else None
+    n_samples_val = 50 if len(val_loader) < 50 else None
+
+    train_loader, val_loader = _fetch_loaders(
+        dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
+        train_rois=train_rois, val_rois=val_rois, n_train_samples=n_samples_train, n_val_samples=n_samples_val
+    )
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 

@@ -3,7 +3,7 @@ import shutil
 import subprocess
 import itertools
 from datetime import datetime
-from peft_sam.preprocess_datasets import preprocess_data
+from peft_sam.dataset.preprocess_datasets import preprocess_data
 
 
 ALL_SCRIPTS = [
