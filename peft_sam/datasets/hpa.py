@@ -14,6 +14,7 @@ def get_hpa_segmentation_dataset(
     path: Union[os.PathLike, str],
     split: str,
     patch_shape: Tuple[int, int],
+    sample_range: Optional[Tuple[int, int]] = None,
     offsets: Optional[List[List[int]]] = None,
     boundaries: bool = False,
     binary: bool = False,
@@ -27,6 +28,7 @@ def get_hpa_segmentation_dataset(
         path: Filepath to a folder where the downloaded data will be saved.
         split: The split for the dataset. Available splits are 'train', 'val' or 'test'.
         patch_shape: The patch shape to use for training.
+        sample_range: Id range of samples to load from the training dataset.
         offsets: Offset values for affinity computation used as target.
         boundaries: Whether to compute boundaries as the target.
         binary: Whether to use a binary segmentation target.
@@ -62,6 +64,14 @@ def get_hpa_segmentation_dataset(
     raw_key = [f"raw/{chan}" for chan in channels]
     label_key = "labels"
 
+    if sample_range is not None:
+        start, stop = sample_range
+        if start is None:
+            start = 0
+        if stop is None:
+            stop = len(paths)
+        paths = paths[start:stop]
+
     return default_segmentation_dataset(paths, raw_key, paths, label_key, patch_shape, **kwargs)
 
 
@@ -70,6 +80,7 @@ def get_hpa_segmentation_loader(
     split: str,
     patch_shape: Tuple[int, int],
     batch_size: int,
+    sample_range: Optional[Tuple[int, int]] = None,
     offsets: Optional[List[List[int]]] = None,
     boundaries: bool = False,
     binary: bool = False,
@@ -84,6 +95,7 @@ def get_hpa_segmentation_loader(
         split: The split for the dataset. Available splits are 'train', 'val' or 'test'.
         patch_shape: The patch shape to use for training.
         batch_size: The batch size for training.
+        sample_range: Id range of samples to load from the training dataset.
         offsets: Offset values for affinity computation used as target.
         boundaries: Whether to compute boundaries as the target.
         binary: Whether to use a binary segmentation target.
@@ -99,7 +111,7 @@ def get_hpa_segmentation_loader(
         default_segmentation_dataset, **kwargs
     )
     dataset = get_hpa_segmentation_dataset(
-        path, split, patch_shape,
+        path, split, patch_shape, sample_range=sample_range,
         offsets=offsets, boundaries=boundaries, binary=binary,
         channels=channels, download=download, n_workers_preproc=n_workers_preproc,
         **ds_kwargs
