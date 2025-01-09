@@ -38,7 +38,10 @@ def _fetch_loaders(
         label_transform = ResizeLabelTrafo((512, 512))
 
         sampler = MinInstanceSampler()
-
+        if train_sample_range is None:
+            train_sample_range = (0, 10)
+        if val_sample_range is None:
+            val_sample_range = (10, 13)
         train_loader = light_microscopy.get_covid_if_loader(
             path=os.path.join(data_root, "covid_if"),
             patch_shape=(512, 512),
