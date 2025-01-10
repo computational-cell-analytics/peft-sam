@@ -43,8 +43,10 @@ def finetune(args):
         args.peft_method,
         alpha=args.alpha,
         dropout=args.dropout,
-        projection_size=args.projection_size
+        projection_size=args.projection_size,
+        quantize=args.quantize,
     )
+    print(peft_kwargs)
     print("PEFT arguments: ", peft_kwargs)
 
     # Run training.
@@ -124,6 +126,9 @@ def main():
     )
     parser.add_argument(
         "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"
+    )
+    parser.add_argument(
+        "--quantize", action="store_true", help="Whether to quantize the model."
     )
     args = parser.parse_args()
     finetune(args)

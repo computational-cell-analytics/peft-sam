@@ -15,6 +15,7 @@ PEFT_METHODS = {
     "AttentionSurgery": {"peft_rank": 2},
     "BiasSurgery": {"peft_rank": 2},
     "LayerNormSurgery": {"peft_rank": 2},
+    "qlora": {"peft_rank": 32, "quantize": True},   # QLoRA
     }
 
 
@@ -32,7 +33,8 @@ def write_batch_script(
     dropout=None,
     learning_rate=1e-5,
     projection_size=None,
-    freeze=None
+    freeze=None,
+    quantize=False
 ):
     assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
 
@@ -75,9 +77,10 @@ source activate {env_name}
         python_script += f"--projection_size {projection_size} "
     if dropout is not None:
         python_script += f"--dropout {dropout} "
-
     if freeze is not None:
         python_script += f"--freeze {freeze} "
+    if quantize:
+        python_script += "--quantize "
     # let's add the python script to the bash script
     batch_script += python_script
     print(batch_script)
@@ -141,17 +144,18 @@ def run_peft_finetuning(args):
                 )
             # peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
+                _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 script_name = get_batch_script_names("./gpu_jobs")
                 checkpoint_name = f"{model}/{peft_method}/{dataset}_sam"
                 if cpkt_exists(checkpoint_name, args):
                     continue
                 write_batch_script(
-                    env_name="sam",
+                    env_name="peft-sam",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
                     checkpoint_path=None,
-                    peft_method=peft_method,
+                    peft_method=_peft_method,
                     checkpoint_name=checkpoint_name,
                     dataset=dataset,
                     **peft_kwargs
