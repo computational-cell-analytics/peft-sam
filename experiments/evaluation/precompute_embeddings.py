@@ -17,7 +17,8 @@ def main():
         args.peft_module,
         alpha=args.alpha,
         dropout=args.dropout,
-        projeciton_size=args.projection_size
+        projeciton_size=args.projection_size,
+        quantize=args.quantize,
     )
 
     predictor = get_sam_model(
