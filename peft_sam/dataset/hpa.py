@@ -1,13 +1,17 @@
+import os
 from glob import glob
 from typing import List, Optional, Sequence, Tuple, Union
-import os
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
-from torch_em.data.datasets.util import split_kwargs, add_instance_label_transform, update_kwargs
 from torch_em import default_segmentation_dataset, get_data_loader
+from torch_em.data.datasets.util import (
+    add_instance_label_transform,
+    split_kwargs,
+    update_kwargs,
+    update_kwargs_for_resize_trafo,
+)
 from torch_em.data.datasets.light_microscopy.hpa import get_hpa_segmentation_data
-from torch_em.data.datasets.util import update_kwargs_for_resize_trafo
 
 
 def get_hpa_segmentation_dataset(

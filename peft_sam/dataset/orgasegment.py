@@ -1,12 +1,4 @@
-"""The OrgaSegment dataset contains annotations for organoid segmentation
-of intestinal patient derived organoids in bright field images.
-
-This dataset is from the publication https://doi.org/10.1038/s42003-024-05966-4.
-Please cite it if you use this dataset for your research.
-"""
-
 import os
-import shutil
 from glob import glob
 from typing import Tuple, Union, Literal, List, Optional
 
@@ -15,41 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch_em
 
 from torch_em.data.datasets import util
-
-
-URL = "https://zenodo.org/records/10278229/files/OrganoidBasic_v20211206.zip"
-CHECKSUM = "d067124d734108e46e18f65daaf17c89cb0a40bdacc6f6031815a6839e472798"
-
-
-def get_orgasegment_data(
-    path: Union[os.PathLike, str], split: Literal["train", "val", "eval"], download: bool = False
-) -> str:
-    """Download the OrgaSegment dataset for organoid segmentation.
-
-    Args:
-        path: Filepath to a folder where the downloaded data will be saved.
-        split: The split to download. Either 'train', 'val or 'eval'.
-        download: Whether to download the data if it is not present.
-
-    Returns:
-        The filepath to the training data.
-    """
-    os.makedirs(path, exist_ok=True)
-
-    data_dir = os.path.join(path, split)
-    if os.path.exists(data_dir):
-        return data_dir
-
-    zip_path = os.path.join(path, "OrganoidBasic_v20211206.zip")
-    util.download_source(path=zip_path, url=URL, download=download, checksum=CHECKSUM)
-    util.unzip(zip_path=zip_path, dst=path, remove=True)
-
-    shutil.move(os.path.join(path, "OrganoidBasic_v20211206", "train"), os.path.join(path, "train"))
-    shutil.move(os.path.join(path, "OrganoidBasic_v20211206", "val"), os.path.join(path, "val"))
-    shutil.move(os.path.join(path, "OrganoidBasic_v20211206", "eval"), os.path.join(path, "eval"))
-    shutil.rmtree(os.path.join(path, "OrganoidBasic_v20211206"))
-
-    return data_dir
+from torch_em.data.datasets.light_microscopy.orgasegment import get_orgasegment_data
 
 
 def get_orgasegment_paths(

@@ -1,118 +1,13 @@
-"""This dataset contains annotation for nucleus segmentation in 3d fluorescence microscopy.
-
-This dataset is from the publication https://doi.org/10.1242/dev.202800.
-Please cite it if you use this dataset in your research.
-"""
-
 import os
 from glob import glob
-from shutil import rmtree
-from typing import Optional, Tuple, Union, List, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-import imageio.v3 as imageio
-
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 import torch_em
 from torch_em.data.datasets import util
-
-
-URL = "https://www.ebi.ac.uk/biostudies/files/S-BIAD1026/Nuclei_training_segmentation/Training%20image%20dataset_Tiff%20Files.zip"  # noqa
-CHECKSUM = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-
-
-def _load_tif(path):
-    vol = None
-
-    path_tif = path + ".tif"
-    if os.path.exists(path_tif):
-        vol = imageio.imread(path_tif)
-
-    path_tiff = path + ".tiff"
-    if os.path.exists(path_tiff):
-        vol = imageio.imread(path_tiff)
-
-    if vol is None:
-        raise RuntimeError("Can't find tif or tiff file for {path}.")
-
-    return vol
-
-
-def _clip_shape(raw, labels):
-    shape = raw.shape
-    labels = labels[:shape[0], :shape[1], :shape[2]]
-
-    shape = labels.shape
-    raw = raw[:shape[0], :shape[1], :shape[2]]
-
-    assert labels.shape == raw.shape, f"{labels.shape}, {raw.shape}"
-    return raw, labels
-
-
-def _process_data(in_folder, out_folder):
-    import h5py
-
-    os.makedirs(out_folder, exist_ok=True)
-
-    sample_folders = glob(os.path.join(in_folder, "*"))
-    for folder in sample_folders:
-        sample = os.path.basename(folder)
-        out_path = os.path.join(out_folder, f"{sample}.h5")
-
-        cell_raw = _load_tif(os.path.join(folder, f"{sample}_cellwall"))
-        cell_labels = _load_tif(os.path.join(folder, f"{sample}_cellseg"))
-        cell_labels = cell_labels[:, ::-1]
-        cell_raw, cell_labels = _clip_shape(cell_raw, cell_labels)
-
-        nucleus_raw = _load_tif(os.path.join(folder, f"{sample}_n_H2BtdTomato"))
-        nucleus_labels = _load_tif(os.path.join(folder, f"{sample}_n_stain_StarDist_goldGT"))
-        nucleus_labels = nucleus_labels[:, ::-1]
-        nucleus_raw, nucleus_labels = _clip_shape(nucleus_raw, nucleus_labels)
-
-        # Remove last frames with artifacts for two volumes (1137 and 1170).
-        if sample in ["1137", "1170"]:
-            nucleus_raw, nucleus_labels = nucleus_raw[:-1], nucleus_labels[:-1]
-            cell_raw, cell_labels = cell_raw[:-1], cell_labels[:-1]
-
-        # Fixing cell labels for one volume (1136) is misaligned.
-        if sample == "1136":
-            cell_labels = np.fliplr(cell_labels)
-
-        with h5py.File(out_path, "w") as f:
-            f.create_dataset("raw/cells", data=cell_raw, compression="gzip")
-            f.create_dataset("raw/nuclei", data=nucleus_raw, compression="gzip")
-
-            f.create_dataset("labels/cells", data=cell_labels, compression="gzip")
-            f.create_dataset("labels/nuclei", data=nucleus_labels, compression="gzip")
-
-
-def get_gonuclear_data(path: Union[os.PathLike, str], download: bool) -> str:
-    """Download the GoNuclear training data.
-
-    Args:
-        path: Filepath to a folder where the downloaded data will be saved.
-        download: Whether to download the data if it is not present.
-
-    Returns:
-        The filepath to the training data.
-    """
-    data_path = os.path.join(path, "gonuclear_datasets")
-    if os.path.exists(data_path):
-        return data_path
-
-    os.makedirs(path, exist_ok=True)
-    zip_path = os.path.join(path, "gonuclear.zip")
-    util.download_source(zip_path, URL, download, CHECKSUM)
-    util.unzip(zip_path, path, True)
-
-    extracted_path = os.path.join(path, "Training image dataset_Tiff Files")
-    assert os.path.exists(extracted_path), extracted_path
-    _process_data(extracted_path, data_path)
-    assert os.path.exists(data_path)
-
-    rmtree(extracted_path)
-    return data_path
+from torch_em.data.datasets.light_microscopy.gonuclear import get_gonuclear_data
 
 
 def get_gonuclear_paths(
