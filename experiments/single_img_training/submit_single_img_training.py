@@ -35,7 +35,7 @@ def write_batch_script(
     batch_script = f"""#!/bin/bash
 #SBATCH -c 16
 #SBATCH --mem 64G
-#SBATCH -p grete:shared
+#SBATCH -p grete:interactive
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007

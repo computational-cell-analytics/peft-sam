@@ -39,10 +39,9 @@ def write_batch_script(
 #SBATCH -c 16
 #SBATCH --mem 64G
 #SBATCH -t 1-00:00:00
-#SBATCH -p grete:shared
+#SBATCH -p grete:interactive
 #SBATCH -G A100:1
 #SBATCH -A nim00007
-#SBATCH --constraint=80gb
 #SBATCH --job-name={inference_setup}
 
 source ~/.bashrc
