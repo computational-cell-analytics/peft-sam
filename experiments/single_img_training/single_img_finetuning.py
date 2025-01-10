@@ -84,7 +84,7 @@ def finetune(args):
         model_type=model_type,
         train_loader=train_loader,
         val_loader=val_loader,
-        early_stopping=None,
+        early_stopping=10,
         n_objects_per_batch=n_objects_per_batch,
         checkpoint_path=checkpoint_path,
         freeze=freeze_parts,

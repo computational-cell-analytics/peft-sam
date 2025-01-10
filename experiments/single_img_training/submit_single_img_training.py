@@ -39,7 +39,6 @@ def write_batch_script(
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
-#SBATCH --constraint=80gb
 source activate {env_name}
 """
 
