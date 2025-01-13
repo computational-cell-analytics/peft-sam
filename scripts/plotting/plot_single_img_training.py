@@ -58,10 +58,9 @@ def create_barplot(df):
 
     # Unique datasets and modalities
     datasets = df_melted["dataset"].unique()
-    num_datasets = len(datasets)
 
     # Create subplots for each dataset
-    fig, axes = plt.subplots(nrows=(num_datasets + 1) // 2, ncols=2, figsize=(10, num_datasets * 2), constrained_layout=True)
+    fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(12, 12), constrained_layout=True)
     axes = axes.flatten()
 
     for i, dataset in enumerate(datasets):
@@ -109,13 +108,13 @@ def create_barplot(df):
     fig.legend(
         handles=handles, loc='lower center', ncol=10, fontsize=10,
     )
-    fig.tight_layout(rect=[0.04, 0.05, 1, 0.99])  # Adjust space for the legend
+    fig.tight_layout(rect=[0.04, 0.03, 1, 0.99])  # Adjust space for the legend
     # Hide unused subplots
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
 
-    plt.text(x=-0.9, y=3.2, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
-    plt.savefig("../../results/figures/single_img_training.png")
+    plt.text(x=-1.2, y=2, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
+    plt.savefig("../../results/figures/single_img_training.png", dpi=300)
 
 
 if __name__ == "__main__":
