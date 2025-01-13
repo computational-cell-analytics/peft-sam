@@ -115,6 +115,7 @@ def get_default_arguments():
     parser.add_argument(
         "--projection_size", default=None, type=int, help="Projection size for Adaptformer module."
     )
+    parser.add_argument("--quantize", action="store_true", help="Whether to quantize the model.")
 
     args = parser.parse_args()
     return args
