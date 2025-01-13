@@ -61,7 +61,7 @@ def create_barplot(df):
     num_datasets = len(datasets)
 
     # Create subplots for each dataset
-    fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(10, num_datasets * 2), constrained_layout=True)
+    fig, axes = plt.subplots(nrows=(num_datasets + 1) // 2, ncols=2, figsize=(10, num_datasets * 2), constrained_layout=True)
     axes = axes.flatten()
 
     for i, dataset in enumerate(datasets):
