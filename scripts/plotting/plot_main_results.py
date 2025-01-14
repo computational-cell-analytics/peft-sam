@@ -13,11 +13,11 @@ DATASET_MAPPING = {
 MODALITY_MAPPING = {
     "vanilla": "Base Model",
     "generalist": "Base Model",
-    "full_ft": "Full Finetuning",
+    "full_ft": "Full Ft",
     "lora": "LoRA",
-    "AttentionSurgery": "Attention Tuning",
-    "BiasSurgery": "Bias Tuning",
-    "LayerNormSurgery": "Layernorm Tuning",
+    "AttentionSurgery": "Attf Tune",
+    "BiasSurgery": "Bias Tune",
+    "LayerNormSurgery": "LN Tune",
     "fact": "FacT",
     "adaptformer": "AdaptFormer",
     "freeze_encoder": "Freeze Encoder",
@@ -42,8 +42,10 @@ def plot_results(df):
     df['modality'] = df['modality'].replace(MODALITY_MAPPING)
     df['dataset'] = df['dataset'].replace(DATASET_MAPPING)
 
+    df = df[df['dataset'] != 'LIVECell']
+
     # Unique datasets and models
-    datasets = DATASET_MAPPING.values()
+    datasets = df['dataset'].unique()
     models = df['model'].unique()
     # Define markers for models
     model_markers = {
@@ -51,15 +53,11 @@ def plot_results(df):
         "SAM": "x"
     }
     # Create a plot for each dataset
-    fig, axes = plt.subplots(4, 2, figsize=(14, 14), sharex=False, sharey=True)
+    fig, axes = plt.subplots(3, 2, figsize=(14, 10), sharex=False, sharey=True)
 
-    axes[3, 1].axis('off')  # Turn off the bottom-right subpl
     for row, dataset in enumerate(datasets):
         dataset_data = df[df['dataset'] == dataset]
-
         ax = axes.flatten()[row]
-        if dataset == 'livecell':
-            models = ['SAM']
         for model in models:
             # Filter data for the current model
             model_data = dataset_data[dataset_data['model'] == model]
@@ -67,10 +65,10 @@ def plot_results(df):
             # Plot each metric with the custom color palette and model markers
             for metric in metrics:
                 ax.plot(
-                    model_data['modality'], 
-                    model_data[metric], 
-                    marker=model_markers[model], 
-                    label=f"{metric} ({model})", 
+                    model_data['modality'],
+                    model_data[metric],
+                    marker=model_markers[model],
+                    label=f"{metric} ({model})",
                     color=CUSTOM_PALETTE[metric]
                 )
 
@@ -81,7 +79,7 @@ def plot_results(df):
             for rank, idx in enumerate(top_indices):
                 point_x = dataset_data.loc[idx, 'modality']
                 point_y = dataset_data.loc[idx, metric]
-                circle_size = 150 - rank * 50  # Size decreases with rank
+                circle_size = 10**(3-rank)  # Size decreases with rank
 
                 # Add a circle around the point
                 ax.scatter(
@@ -91,14 +89,13 @@ def plot_results(df):
 
         # Set titles and labels
         ax.set_title(dataset, fontsize=12)  # Remove underscores, capitalize
-        ax.set_ylabel("Segmentation Accuracy", fontsize=12)
         ax.tick_params(axis='x', rotation=45)
         ax.set_xticks(model_data['modality'])
         ax.set_xticklabels(model_data['modality'], rotation=45)
 
-    fig.tight_layout(rect=[0, 0.05, 1, 0.95])  # Adjust space for the legend
+    fig.tight_layout(rect=[0.05, 0.05, 1, 0.95])  # Adjust space for the legend
     fig.suptitle("Comparison of PEFT methods", fontsize=16, y=0.98)
-    fig.subplots_adjust(hspace=0.6)
+    fig.subplots_adjust(hspace=0.7)
 
     metric_handles = [
         plt.Line2D([0], [0], color=CUSTOM_PALETTE[metric], lw=2) for metric in metrics
@@ -123,6 +120,7 @@ def plot_results(df):
     fig.legend(
         handles, labels, loc='lower center', ncol=10, fontsize=10,
     )
+    plt.text(x=-12, y=1.4, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
     plt.savefig('../../results/figures/main_results.png', dpi=300)
 
 
