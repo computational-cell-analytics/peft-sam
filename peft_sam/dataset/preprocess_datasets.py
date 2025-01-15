@@ -10,13 +10,14 @@ import imageio.v3 as imageio
 from skimage.measure import label as connected_components
 
 from torch_em.data import datasets
-from torch_em.transform.raw import normalize, normalize_percentile
 from torch_em.transform.generic import ResizeLongestSideInputs
+from torch_em.transform.raw import normalize, normalize_percentile
 
 import nifty.tools as nt
 
 from elf.wrapper import RoiWrapper
-from peft_sam.hpa import get_hpa_segmentation_dataset
+
+from . import get_hpa_segmentation_dataset
 
 
 ROOT = "/scratch/usr/nimcarot/data/"
@@ -164,7 +165,7 @@ def from_h5_to_tif(
             raw, labels = raw[None], labels[None]
 
         if raw.ndim == 3 and labels.ndim == 3:  # when we have a volume or mono-channel image
-            if resize_longest_side: # hpa
+            if resize_longest_side:  # hpa
                 raw, labels = resize_image(raw, labels, crop_shape)
                 crop_shape = None
             for i, (_raw, _label) in tqdm(enumerate(zip(raw, labels)), total=raw.shape[0], desc=h5_vol_path):
