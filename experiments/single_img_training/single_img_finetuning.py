@@ -64,7 +64,8 @@ def finetune(args):
 
     train_loader, val_loader = _fetch_loaders(
         dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
-        train_rois=train_rois, val_rois=val_rois, n_train_samples=n_samples_train, n_val_samples=n_samples_val
+        train_rois=train_rois, val_rois=val_rois, n_train_samples=n_samples_train, n_val_samples=n_samples_val,
+        batch_size=1
     )
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
