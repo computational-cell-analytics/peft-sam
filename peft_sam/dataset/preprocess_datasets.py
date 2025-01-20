@@ -10,14 +10,14 @@ import imageio.v3 as imageio
 from skimage.measure import label as connected_components
 
 from torch_em.data import datasets
-from torch_em.transform.raw import normalize, normalize_percentile
 from torch_em.transform.generic import ResizeLongestSideInputs
+from torch_em.transform.raw import normalize, normalize_percentile
 
 import nifty.tools as nt
 
 from elf.wrapper import RoiWrapper
 
-from .hpa import get_hpa_segmentation_dataset
+from . import get_hpa_segmentation_dataset
 
 
 ROOT = "/scratch/usr/nimcarot/data/"

@@ -9,20 +9,14 @@ ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitol
 
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
-    "ssf": {"peft_rank": 2},
-    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "proj_size": 64},
-    "fact": {"peft_rank": 16, "dropout": 0.1},
-    "AttentionSurgery": {"peft_rank": 2},
-    "BiasSurgery": {"peft_rank": 2},
-    "LayerNormSurgery": {"peft_rank": 2},
-    "qlora": {"peft_rank": 32, "quantize": True},
+    "qlora": {"peft_rank": 32, "quantize": True}  # QLoRA
     }
 
 ALL_SCRIPTS = [
     "evaluate_instance_segmentation", "iterative_prompting"
 ]
 # replace with experiment folder
-EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
+EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/single_img_training"
 
 
 def write_batch_script(
@@ -50,7 +44,6 @@ def write_batch_script(
 #SBATCH -p grete:shared
 #SBATCH -G A100:1
 #SBATCH -A nim00007
-#SBATCH --constraint=80gb
 #SBATCH --job-name={inference_setup}
 
 source ~/.bashrc
@@ -165,31 +158,16 @@ def run_peft_evaluations():
                         experiment_folder=result_path,
                         dataset=dataset
                     )
-            # run frozen encoder
-            checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/freeze_encoder/{dataset}_sam/best.pt"
-            assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", model, dataset)
-            if not os.path.exists(result_path):
-                os.makedirs(result_path, exist_ok=False)
-                for current_setup in ALL_SCRIPTS:
-                    write_batch_script(
-                        env_name="sam",
-                        out_path=get_batch_script_names(tmp_folder),
-                        inference_setup=current_setup,
-                        checkpoint=checkpoint,
-                        model_type=model,
-                        experiment_folder=result_path,
-                        dataset=dataset
-                    )
             # run peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
                 checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
                 result_path = os.path.join(EXPERIMENT_ROOT, peft_method, model, dataset)
-                _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 if os.path.exists(result_path):
                     continue
                 os.makedirs(result_path, exist_ok=False)
+
+                _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 for current_setup in ALL_SCRIPTS:
                     write_batch_script(
                         env_name="peft-sam",

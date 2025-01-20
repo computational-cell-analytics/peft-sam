@@ -40,7 +40,8 @@ def main():
         args.peft_module,
         alpha=args.alpha,
         dropout=args.dropout,
-        projection_size=args.projection_size
+        projection_size=args.projection_size,
+        quantize=args.quantize,
     )
     prediction_folder = run_amg_inference(
         args.dataset, args.model, args.checkpoint, args.experiment_folder, peft_kwargs
