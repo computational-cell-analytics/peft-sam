@@ -16,7 +16,7 @@ class RawTrafo:
     self.triplicate_dims: if true triplicates the image to 3 channels, in case some of the datasets
                              images are RGB and some aren't
     """
-    def __init__(self, desired_shape=None, do_padding=True, do_rescaling=False, padding="constant",
+    def __init__(self, desired_shape=None, do_padding=True, do_rescaling=True, padding="constant",
                  triplicate_dims=False):
         self.desired_shape = desired_shape
         self.padding = padding
@@ -57,8 +57,27 @@ def get_peft_kwargs(peft_rank, peft_module, dropout=None, alpha=None, projection
         from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
         if peft_module == 'lora':
             module = LoRASurgery
-            peft_kwargs = {"rank": peft_rank, "peft_module": module, "alpha": float(alpha)}
+            peft_kwargs = {"rank": peft_rank, "peft_module": module}
         elif peft_module == 'fact':
             module = FacTSurgery
             peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout}
+        elif peft_module == 'adaptformer':
+            from micro_sam.models.peft_sam import AdaptFormer
+            module = AdaptFormer
+            if alpha != 'learnable_scalar':
+                alpha = float(alpha)
+            peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout, "alpha": alpha,
+                           "projection_size": projection_size}
+        elif peft_module == 'AttentionSurgery':
+            from micro_sam.models.peft_sam import AttentionSurgery
+            peft_kwargs = {"rank": 2, "peft_module": AttentionSurgery}
+        elif peft_module == 'BiasSurgery':
+            from micro_sam.models.peft_sam import BiasSurgery
+            peft_kwargs = {"rank": 2, "peft_module": BiasSurgery}
+        elif peft_module == 'LayerNormSurgery':
+            from micro_sam.models.peft_sam import LayerNormSurgery
+            peft_kwargs = {"rank": 2, "peft_module": LayerNormSurgery}
+        elif peft_module == 'ssf':
+            from micro_sam.models.peft_sam import SSFSurgery
+            peft_kwargs = {"rank": 2, "peft_module": SSFSurgery}
     return peft_kwargs

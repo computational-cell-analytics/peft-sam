@@ -19,7 +19,7 @@ DATASETS = [
     # in-domain (LM)
     "livecell",
     # out-of-domain (LM)
-    "covid_if", "orgasegment", "gonuclear",
+    "covid_if", "orgasegment", "gonuclear", "hpa",
     # organelles (EM)
     # - out-of-domain
     "mitolab/glycolytic_muscle", "platynereis/cilia",
@@ -157,7 +157,7 @@ def get_default_arguments():
         "--dropout", default=None, type=float, help="The dropout factor for FacT finetuning"
     )
     parser.add_argument(
-        "--alpha", default=None, type=float, help="Scaling factor for peft method. (e.g. LoRA or AdaptFormer)"
+        "--alpha", default=None, help="Scaling factor for peft method. (e.g. LoRA or AdaptFormer)"
     )
     parser.add_argument(
         "--projection_size", default=None, type=int, help="Projection size for Adaptformer module."

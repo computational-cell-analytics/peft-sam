@@ -12,6 +12,7 @@ import micro_sam.training as sam_training
 from micro_sam.training.util import ResizeLabelTrafo
 
 from ..util import RawTrafo
+from .hpa import get_hpa_segmentation_loader
 
 
 def _fetch_microscopy_loaders(dataset_name, data_root):
@@ -21,11 +22,8 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
         # 1, Covid IF does not have internal splits. For this example I chose first 10 samples for training,
         # and next 3 samples for validation, left the rest for testing.
 
-        label_transform = PerObjectDistanceTransform(
-            distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
-            min_size=0
-        )
-        raw_transform = RawTrafo(do_padding=False, do_rescaling=True)
+        raw_transform = RawTrafo(desired_shape=(512, 512))
+        label_transform = ResizeLabelTrafo((512, 512))
 
         train_loader = datasets.get_covid_if_loader(
             path=os.path.join(data_root, "covid_if"),
@@ -69,7 +67,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             label_transform=label_transform,
             raw_transform=raw_transform,
             label_dtype=torch.float32,
-            sampler=MinInstanceSampler()
+            sampler=MinInstanceSampler(min_num_instances=25)
         )
         val_loader = datasets.get_livecell_loader(
             path=os.path.join(data_root, "livecell"),
@@ -83,16 +81,17 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             label_transform=label_transform,
             raw_transform=raw_transform,
             label_dtype=torch.float32,
-            sampler=MinInstanceSampler()
+            sampler=MinInstanceSampler(min_num_instances=25)
         )
 
     elif dataset_name == "orgasegment":
         # 2. OrgaSegment has internal splits provided. We follow the respective splits for our experiments.
+
+        raw_transform = RawTrafo(desired_shape=(512, 512), triplicate_dims=True, do_padding=False)
         label_transform = PerObjectDistanceTransform(
             distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
-            min_size=0
+            min_size=5
         )
-        raw_transform = RawTrafo(do_padding=False, triplicate_dims=True)
 
         train_loader = datasets.get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
@@ -104,7 +103,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             download=True,
             raw_transform=raw_transform,
             label_transform=label_transform,
-            sampler=MinInstanceSampler()
+            sampler=MinInstanceSampler(min_num_instances=5)
         )
         val_loader = datasets.get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
@@ -115,7 +114,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             download=True,
             raw_transform=raw_transform,
             label_transform=label_transform,
-            sampler=MinInstanceSampler()
+            sampler=MinInstanceSampler(min_num_instances=5)
         )
 
     elif dataset_name == "mitolab_glycolytic_muscle":
@@ -124,11 +123,8 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
         train_rois = np.s_[0:175, :, :]
         val_rois = np.s_[175:225, :, :]
 
-        raw_transform = RawTrafo((1, 512, 512), do_padding=False)
-        label_transform = PerObjectDistanceTransform(
-            distances=True, boundary_distances=True, directed_distances=False,
-            foreground=True, instances=True, min_size=0
-        )
+        raw_transform = RawTrafo((512, 512), do_padding=True)
+        label_transform = ResizeLabelTrafo((512, 512), min_size=5)
         train_loader = datasets.cem.get_benchmark_loader(
             path=os.path.join(data_root, "mitolab"),
             dataset_id=3,
@@ -137,7 +133,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             download=False,
             num_workers=16,
             shuffle=True,
-            sampler=MinInstanceSampler(),
+            sampler=MinInstanceSampler(min_num_instances=5),
             rois=train_rois,
             raw_transform=raw_transform,
             label_transform=label_transform,
@@ -151,7 +147,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             download=False,
             num_workers=16,
             shuffle=True,
-            sampler=MinInstanceSampler(),
+            sampler=MinInstanceSampler(min_num_instances=5),
             rois=val_rois,
             raw_transform=raw_transform,
             label_transform=label_transform,
@@ -171,7 +167,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
         }
 
         raw_transform = RawTrafo((1, 512, 512))
-        label_transform = ResizeLabelTrafo((512, 512))
+        label_transform = ResizeLabelTrafo((512, 512), min_size=3)
 
         train_loader = datasets.get_platynereis_cilia_loader(
             path=os.path.join(data_root, "platynereis"),
@@ -182,7 +178,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             download=True,
             num_workers=16,
             shuffle=True,
-            sampler=MinInstanceSampler(),
+            sampler=MinInstanceSampler(min_num_instances=3),
             raw_transform=raw_transform,
             label_transform=label_transform
         )
@@ -194,7 +190,7 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             rois=val_rois,
             download=True,
             num_workers=16,
-            sampler=MinInstanceSampler(),
+            sampler=MinInstanceSampler(min_num_instances=3),
             raw_transform=raw_transform,
             label_transform=label_transform
         )
@@ -209,10 +205,10 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             segmentation_task="nuclei",
             download=True,
             sample_ids=[1135, 1136, 1137],
-            raw_transform=RawTrafo((1, 512, 512), do_rescaling=True),
-            label_transform=ResizeLabelTrafo((512, 512)),
+            raw_transform=RawTrafo((512, 512)),
+            label_transform=ResizeLabelTrafo((512, 512), min_size=5),
             num_workers=16,
-            sampler=MinInstanceSampler(),
+            sampler=MinInstanceSampler(min_num_instances=5),
             ndim=2
         )
         val_loader = datasets.get_gonuclear_loader(
@@ -222,10 +218,43 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
             segmentation_task="nuclei",
             download=True,
             sample_ids=[1139],
-            raw_transform=RawTrafo((1, 512, 512), do_rescaling=True),
-            label_transform=ResizeLabelTrafo((512, 512)),
+            raw_transform=RawTrafo((512, 512)),
+            label_transform=ResizeLabelTrafo((512, 512), min_size=5),
             num_workers=16,
-            sampler=MinInstanceSampler(),
+            sampler=MinInstanceSampler(min_num_instances=5),
+            ndim=2
+        )
+
+    elif dataset_name == "hpa":
+
+        label_transform = PerObjectDistanceTransform(
+            distances=True, boundary_distances=True, directed_distances=False,
+            foreground=True, instances=True, min_size=5
+        )
+        train_loader = get_hpa_segmentation_loader(
+            path=os.path.join(data_root, "hpa"),
+            split="train",
+            patch_shape=(512, 512),
+            batch_size=2,
+            channels=["protein"],
+            download=True,
+            n_workers_preproc=16,
+            raw_transform=RawTrafo((512, 512), do_padding=False),
+            label_transform=label_transform,
+            sampler=MinInstanceSampler(min_num_instances=5),
+            ndim=2
+        )
+        val_loader = get_hpa_segmentation_loader(
+            path=os.path.join(data_root, "hpa"),
+            split="val",
+            patch_shape=(512, 512),
+            batch_size=2,
+            channels=["protein"],
+            download=True,
+            n_workers_preproc=16,
+            raw_transform=RawTrafo((512, 512), do_padding=False),
+            label_transform=label_transform,
+            sampler=MinInstanceSampler(min_num_instances=5),
             ndim=2
         )
 
@@ -236,7 +265,6 @@ def _fetch_microscopy_loaders(dataset_name, data_root):
 
 
 def _fetch_medical_loaders(dataset_name, data_root):
-
     def _transform_identity(raw, labels):  # This is done to avoid any transformations.
         return raw, labels
 
