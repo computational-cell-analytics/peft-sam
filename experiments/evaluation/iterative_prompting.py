@@ -48,7 +48,8 @@ def main():
         args.peft_module,
         alpha=args.alpha,
         dropout=args.dropout,
-        projection_size=args.projection_size
+        projection_size=args.projection_size,
+        quantize=args.quantize,
     )
     # get the predictor to perform inference
     predictor = get_sam_model(model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs)

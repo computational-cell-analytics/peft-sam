@@ -9,14 +9,8 @@ ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitol
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
-    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "projection_size": 64},
-    "ssf": {"peft_rank": 2},
-    "fact": {"peft_rank": 16, "dropout": 0.1},
-    "AttentionSurgery": {"peft_rank": 2},
-    "BiasSurgery": {"peft_rank": 2},
-    "LayerNormSurgery": {"peft_rank": 2},
-    "qlora": {"peft_rank": 32, "quantize": True},   # QLoRA
-    }
+    "qlora": {"peft_rank": 32, "quantize": True}  # QLoRA
+}
 
 
 def write_batch_script(
@@ -47,11 +41,10 @@ def write_batch_script(
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
-#SBATCH --constraint=80gb
 source activate {env_name}
 """
 
-    python_script = "python ../finetuning.py "
+    python_script = "python single_img_finetuning.py "
 
     # add parameters to the python script
     python_script += f"-m {model_type} "  # choice of vit
@@ -127,26 +120,12 @@ def run_peft_finetuning(args):
                     checkpoint_name=checkpoint_name,
                     dataset=dataset
                 )
-
-            # freeze the encoder
-            checkpoint_name = f"{model}/freeze_encoder/{dataset}_sam"
-            if not cpkt_exists(checkpoint_name, args):
-                script_name = get_batch_script_names("./gpu_jobs")
-                write_batch_script(
-                    env_name="sam",
-                    save_root=args.save_root,
-                    model_type=model,
-                    script_name=script_name,
-                    checkpoint_path=None,
-                    checkpoint_name=checkpoint_name,
-                    dataset=dataset,
-                    freeze='image_encoder'
-                )
             # peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
-                _peft_method = 'lora' if peft_method == 'qlora' else peft_method
+                # for now: run only for lora
                 script_name = get_batch_script_names("./gpu_jobs")
                 checkpoint_name = f"{model}/{peft_method}/{dataset}_sam"
+                _peft_method = "lora" if peft_method == "qlora" else peft_method
                 if cpkt_exists(checkpoint_name, args):
                     continue
                 write_batch_script(
@@ -178,7 +157,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s", "--save_root",
         type=str,
-        default="/scratch/usr/nimcarot/sam/experiments/peft",
+        default="/scratch/usr/nimcarot/sam/experiments/single_img_training",
         help="Path to save checkpoints."
     )
 
