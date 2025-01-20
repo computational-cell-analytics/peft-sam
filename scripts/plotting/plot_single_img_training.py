@@ -29,6 +29,7 @@ def create_barplot(df):
         "generalist": "Base Model",
         "full_ft": "Full Finetuning",
         "lora": "LoRA",
+        "qlora": "QLoRA"
     }
     df['modality'] = df['modality'].replace(modality_mapping)
     df['dataset'] = df['dataset'].replace(dataset_mapping)
@@ -68,7 +69,7 @@ def create_barplot(df):
         dataset_data = df_melted[df_melted["dataset"] == dataset]
 
         modalities = dataset_data["modality"].unique()
-        group_spacing = 2  # Increase this value to add more space between groups
+        group_spacing = 2.5  # Increase this value to add more space between groups
         x_positions = [i * group_spacing for i in range(len(modalities))]
 
         bar_width = 0.35  # Width for each model's bar
@@ -87,7 +88,7 @@ def create_barplot(df):
                 else:
                     models = [r'$\mu$-SAM', 'SAM']
 
-                for j, model in enumerate(models):
+                for _, model in enumerate(models):
                     model_data = benchmark_data[benchmark_data["model"] == model]
                     if not model_data.empty:
                         value = model_data["value"].values[0] if len(model_data["value"].values) > 0 else 0
@@ -120,7 +121,7 @@ def create_barplot(df):
     )
     fig.tight_layout(rect=[0.04, 0.03, 1, 0.98])  # Adjust space for the legend
 
-    plt.text(x=-15.5, y=0.8, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
+    plt.text(x=-24.5, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
     plt.savefig("../../results/figures/single_img_training.png", dpi=300)
 
 

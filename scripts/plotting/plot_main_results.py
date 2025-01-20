@@ -15,13 +15,14 @@ MODALITY_MAPPING = {
     "generalist": "Base Model",
     "full_ft": "Full Ft",
     "lora": "LoRA",
-    "AttentionSurgery": "Attn Tune",
-    "BiasSurgery": "Bias Tune",
-    "LayerNormSurgery": "LN Tune",
-    "fact": "FacT",
     "adaptformer": "AdaptFormer",
+    "ssf": "SSF",
+    "fact": "FacT",
+    "qlora": "QLoRA",
+    "BiasSurgery": "Bias Tune",
+    "AttentionSurgery": "Attn Tune",
+    "LayerNormSurgery": "LN Tune",
     "freeze_encoder": "Freeze Encoder",
-    "ssf": "SSF"
 }
 CUSTOM_PALETTE = {
     "ais": "#FF8B94",
@@ -121,7 +122,7 @@ def plot_results(df):
     fig.legend(
         handles, labels, loc='lower center', ncol=10, fontsize=10,
     )
-    plt.text(x=-23, y=0.85, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
+    plt.text(x=-25, y=0.85, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
     plt.savefig('../../results/figures/main_results.png', dpi=300)
 
 
