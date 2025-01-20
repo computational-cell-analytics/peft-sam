@@ -1,12 +1,13 @@
 import os
 
 import numpy as np
+from skimage.measure import label as connected_components
 
 import torch
 
+from torch_em.data import datasets
 from torch_em.data import MinInstanceSampler
 from torch_em.transform.label import PerObjectDistanceTransform
-from torch_em.data import datasets
 
 import micro_sam.training as sam_training
 from micro_sam.training.util import ResizeLabelTrafo
@@ -319,10 +320,18 @@ def _fetch_medical_loaders(dataset_name, data_root):
         get_loaders = _get_psfhs_loaders
 
     elif dataset_name == "jsrt":
-        def _label_trafo(labels):  # maps labels to expected semantic structure.
+        def _label_trafo(labels):  # maps labels to expected instance structure (to train for instance segmentation).
             neu_label = np.zeros_like(labels)
-            neu_label[labels == 255] = 1  # belongs to lungs
-            neu_label[labels == 85] = 2  # belongs to heart
+
+            # Labels for lungs
+            lungs = (labels == 255)
+            # Ensure both lung volumes unique
+            lungs = connected_components(lungs)
+            # Map both lungs to new label.
+            neu_label[lungs > 0] = lungs[lungs > 0]
+
+            # Belongs to heart labels.
+            neu_label[labels == 85] = np.max(neu_label) + 1
             return neu_label
 
         def _get_jsrt_loaders(split):
@@ -331,7 +340,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 path=os.path.join(data_root, "jsrt"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(512, 512),
-                split=split,
+                split="train",
                 choice="Segmentation02",
                 raw_transform=sam_training.identity,
                 transform=_transform_identity,
@@ -343,9 +352,13 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
     elif dataset_name == "amd_sd":
 
+        def _label_trafo(labels):
+            labels = connected_components(labels).astype(labels.dtype)
+            return labels
+
         def _get_amd_sd_loaders(split):
             # Lesion segmentation in OCT.
-            return datasets.get_amd_sd_loader(
+            loader = datasets.get_amd_sd_loader(
                 path=os.path.join(data_root, "amd_sd"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
@@ -353,9 +366,13 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 raw_transform=sam_training.identity,
                 transform=_transform_identity,
                 label_transform=_label_trafo,
-                sampler=MinInstanceSampler(min_num_instances=6),  # allows getting all labels
+                sampler=MinInstanceSampler(min_size=10),
                 resize_inputs=True,
             )
+            loader.dataset.max_sampling_attempts = 10000
+            return loader
+
+        get_loaders = _get_amd_sd_loaders
 
     elif dataset_name == "mice_tumseg":
         # Adjusting the data alignment with switching axes.
@@ -380,6 +397,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 sampler=MinInstanceSampler(min_size=25),
                 resize_inputs=True,
             )
+        get_loaders = _get_mice_tumseg_loaders
 
     else:
         raise ValueError(f"{dataset_name} is not a valid medical imaging dataset name.")

@@ -66,6 +66,7 @@ def finetune_sam(args):
         scheduler_kwargs=scheduler_kwargs,
         optimizer_class=optimizer_class,
         peft_kwargs=peft_kwargs,
+        with_segmentation_decoder=(not args.medical_imaging),
     )
 
     if args.export_path is not None:
