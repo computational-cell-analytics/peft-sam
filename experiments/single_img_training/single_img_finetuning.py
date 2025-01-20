@@ -75,7 +75,8 @@ def finetune(args):
         args.peft_method,
         alpha=args.alpha,
         dropout=args.dropout,
-        projection_size=args.projection_size
+        projection_size=args.projection_size,
+        quantize=args.quantize,
     )
     print("PEFT arguments: ", peft_kwargs)
 
@@ -154,6 +155,9 @@ def main():
     )
     parser.add_argument(
         "--projection_size", type=int, default=None, help="Projection size for Adaptformer"
+    )
+    parser.add_argument(
+        "--quantize", action="store_true", help="Quantize the model."
     )
     parser.add_argument(
         "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"

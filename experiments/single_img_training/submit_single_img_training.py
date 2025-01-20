@@ -9,6 +9,7 @@ ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitol
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
+    "qlora": {"peft_rank": 32, "quantize": True}  # QLoRA
 }
 
 
@@ -26,7 +27,8 @@ def write_batch_script(
     dropout=None,
     learning_rate=1e-5,
     projection_size=None,
-    freeze=None
+    freeze=None,
+    quantize=False
 ):
     assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
 
@@ -35,7 +37,7 @@ def write_batch_script(
     batch_script = f"""#!/bin/bash
 #SBATCH -c 16
 #SBATCH --mem 64G
-#SBATCH -p grete:interactive
+#SBATCH -p grete:shared
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
@@ -68,9 +70,10 @@ source activate {env_name}
         python_script += f"--projection_size {projection_size} "
     if dropout is not None:
         python_script += f"--dropout {dropout} "
-
     if freeze is not None:
         python_script += f"--freeze {freeze} "
+    if quantize:
+        python_script += "--quantize "
     # let's add the python script to the bash script
     batch_script += python_script
     print(batch_script)
@@ -122,15 +125,16 @@ def run_peft_finetuning(args):
                 # for now: run only for lora
                 script_name = get_batch_script_names("./gpu_jobs")
                 checkpoint_name = f"{model}/{peft_method}/{dataset}_sam"
+                _peft_method = "lora" if peft_method == "qlora" else peft_method
                 if cpkt_exists(checkpoint_name, args):
                     continue
                 write_batch_script(
-                    env_name="sam",
+                    env_name="peft-sam",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
                     checkpoint_path=None,
-                    peft_method=peft_method,
+                    peft_method=_peft_method,
                     checkpoint_name=checkpoint_name,
                     dataset=dataset,
                     **peft_kwargs
