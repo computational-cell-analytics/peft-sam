@@ -325,9 +325,41 @@ def _fetch_microscopy_loaders(
     return train_loader, val_loader
 
 
+#
+# MEDICAL IMAGING DATALOADERS AND IMPORTANT TRANSFORMS
+#
+
+
+def _transform_identity(raw, labels):  # This is done to avoid any transformations.
+    return raw, labels
+
+
+def _jsrt_label_trafo(labels):  # maps labels to expected instance structure (to train for instance segmentation).
+    neu_label = np.zeros_like(labels)
+    lungs = (labels == 255)  # Labels for lungs
+    lungs = connected_components(lungs)  # Ensure both lung volumes unique
+    neu_label[lungs > 0] = lungs[lungs > 0]  # Map both lungs to new label.
+    neu_label[labels == 85] = np.max(neu_label) + 1   # Belongs to heart labels.
+    return neu_label
+
+
+def _amd_sd_label_trafo(labels):
+    labels = connected_components(labels).astype(labels.dtype)
+    return labels
+
+
+# Adjusting the data alignment with switching axes.
+def _mice_tumseg_raw_trafo(raw):
+    raw = raw.transpose(0, 2, 1)
+    return raw
+
+
+def _mice_tumseg_label_trafo(labels):
+    labels = labels.transpose(0, 2, 1)
+    return labels
+
+
 def _fetch_medical_loaders(dataset_name, data_root):
-    def _transform_identity(raw, labels):  # This is done to avoid any transformations.
-        return raw, labels
 
     if dataset_name == "papila":
 
@@ -343,6 +375,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 transform=_transform_identity,
                 sampler=MinInstanceSampler(),
                 resize_inputs=True,
+                download=True,
             )
         get_loaders = _get_papila_loaders
 
@@ -360,6 +393,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 transform=_transform_identity,
                 sampler=MinInstanceSampler(min_size=50),
                 resize_inputs=True,
+                download=True,
             )
         get_loaders = _get_motum_loaders
 
@@ -376,23 +410,11 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 transform=_transform_identity,
                 sampler=MinInstanceSampler(),
                 resize_inputs=True,
+                download=True,
             )
         get_loaders = _get_psfhs_loaders
 
     elif dataset_name == "jsrt":
-        def _label_trafo(labels):  # maps labels to expected instance structure (to train for instance segmentation).
-            neu_label = np.zeros_like(labels)
-
-            # Labels for lungs
-            lungs = (labels == 255)
-            # Ensure both lung volumes unique
-            lungs = connected_components(lungs)
-            # Map both lungs to new label.
-            neu_label[lungs > 0] = lungs[lungs > 0]
-
-            # Belongs to heart labels.
-            neu_label[labels == 85] = np.max(neu_label) + 1
-            return neu_label
 
         def _get_jsrt_loaders(split):
             # Lung and heart segmentation in X-Ray
@@ -404,17 +426,14 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 choice="Segmentation02",
                 raw_transform=sam_training.identity,
                 transform=_transform_identity,
-                label_transform=_label_trafo,
+                label_transform=_jsrt_label_trafo,
                 sampler=MinInstanceSampler(),
                 resize_inputs=True,
+                download=True,
             )
         get_loaders = _get_jsrt_loaders
 
     elif dataset_name == "amd_sd":
-
-        def _label_trafo(labels):
-            labels = connected_components(labels).astype(labels.dtype)
-            return labels
 
         def _get_amd_sd_loaders(split):
             # Lesion segmentation in OCT.
@@ -425,9 +444,10 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 split=split,
                 raw_transform=sam_training.identity,
                 transform=_transform_identity,
-                label_transform=_label_trafo,
+                label_transform=_amd_sd_label_trafo,
                 sampler=MinInstanceSampler(min_size=10),
                 resize_inputs=True,
+                download=True,
             )
             loader.dataset.max_sampling_attempts = 10000
             return loader
@@ -435,14 +455,6 @@ def _fetch_medical_loaders(dataset_name, data_root):
         get_loaders = _get_amd_sd_loaders
 
     elif dataset_name == "mice_tumseg":
-        # Adjusting the data alignment with switching axes.
-        def _raw_trafo(raw):
-            raw = raw.transpose(0, 2, 1)
-            return raw
-
-        def _label_trafo(labels):
-            labels = labels.transpose(0, 2, 1)
-            return labels
 
         def _get_mice_tumseg_loaders(split):
             # Tumor segmentation in microCT.
@@ -451,11 +463,12 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 batch_size=1,
                 patch_shape=(1, 512, 512),
                 split="test",
-                raw_transform=_raw_trafo,
-                label_transform=_label_trafo,
+                raw_transform=_mice_tumseg_raw_trafo,
+                label_transform=_mice_tumseg_label_trafo,
                 transform=_transform_identity,
                 sampler=MinInstanceSampler(min_size=25),
                 resize_inputs=True,
+                download=True,
             )
         get_loaders = _get_mice_tumseg_loaders
 
