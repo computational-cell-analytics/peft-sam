@@ -15,20 +15,26 @@ SAMPLE_DATA = {
     'covid_if': {'train_sample_range': (0, 1), 'val_sample_range': (10, 11), 'train_rois': None, 'val_rois': None},
     'livecell': {'train_sample_range': (2, 3), 'val_sample_range': (25, 26), 'train_rois': None, 'val_rois': None},
     'orgasegment': {'train_sample_range': (0, 1), 'val_sample_range': (0, 1), 'train_rois': None, 'val_rois': None},
-    'mitolab_glycolytic_muscle': {'train_sample_range': None, 'val_sample_range': None,
-                                  'train_rois': np.s_[20:21, :, :], 'val_rois': np.s_[180:181, :, :]},
-    'platy_cilia': {'train_sample_range': None, 'val_sample_range': None, 'train_rois': {2: np.s_[49:50, :, :]},
-                    'val_rois': {2: np.s_[65:66, :, :]}},
-    'gonuclear': {'train_sample_range': None, 'val_sample_range': None, 'train_rois': {1136: np.s_[60:61, :, :]},
-                  'val_rois': {1139: np.s_[40:41, :, :]}},
+    'mitolab_glycolytic_muscle': {
+        'train_sample_range': None, 'val_sample_range': None,
+        'train_rois': np.s_[20:21, :, :], 'val_rois': np.s_[180:181, :, :]
+    },
+    'platy_cilia': {
+        'train_sample_range': None, 'val_sample_range': None,
+        'train_rois': {2: np.s_[49:50, :, :]}, 'val_rois': {2: np.s_[65:66, :, :]}
+    },
+    'gonuclear': {
+        'train_sample_range': None, 'val_sample_range': None,
+        'train_rois': {1136: np.s_[60:61, :, :]}, 'val_rois': {1139: np.s_[40:41, :, :]}
+    },
     'hpa': {'train_sample_range': (1, 2), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
 }
 
 
 def finetune(args):
-    """Code for finetuning SAM (using PEFT methods) on different data
+    """Code for finetuning SAM (using PEFT methods) on one image for different datasets.
     """
-    # override this (below) if you have some more complex set-up and need to specify the exact gpu
+    # Override this (below) if you have some more complex set-up and need to specify the exact gpu
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # training settings:

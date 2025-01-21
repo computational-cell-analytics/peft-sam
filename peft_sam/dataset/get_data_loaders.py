@@ -355,6 +355,7 @@ def _mice_tumseg_raw_trafo(raw):
 
 
 def _mice_tumseg_label_trafo(labels):
+    labels = connected_components(labels).astype(labels.dtype)
     labels = labels.transpose(0, 2, 1)
     return labels
 
@@ -376,6 +377,8 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 sampler=MinInstanceSampler(),
                 resize_inputs=True,
                 download=True,
+                shuffle=True,
+                num_workers=16,
             )
         get_loaders = _get_papila_loaders
 
@@ -394,6 +397,8 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 sampler=MinInstanceSampler(min_size=50),
                 resize_inputs=True,
                 download=True,
+                shuffle=True,
+                num_workers=16,
             )
         get_loaders = _get_motum_loaders
 
@@ -411,6 +416,8 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 sampler=MinInstanceSampler(),
                 resize_inputs=True,
                 download=True,
+                shuffle=True,
+                num_workers=16,
             )
         get_loaders = _get_psfhs_loaders
 
@@ -430,6 +437,8 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 sampler=MinInstanceSampler(),
                 resize_inputs=True,
                 download=True,
+                shuffle=True,
+                num_workers=16,
             )
         get_loaders = _get_jsrt_loaders
 
@@ -448,6 +457,8 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 sampler=MinInstanceSampler(min_size=10),
                 resize_inputs=True,
                 download=True,
+                shuffle=True,
+                num_workers=16,
             )
             loader.dataset.max_sampling_attempts = 10000
             return loader
@@ -469,6 +480,8 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 sampler=MinInstanceSampler(min_size=25),
                 resize_inputs=True,
                 download=True,
+                shuffle=True,
+                num_workers=16,
             )
         get_loaders = _get_mice_tumseg_loaders
 
