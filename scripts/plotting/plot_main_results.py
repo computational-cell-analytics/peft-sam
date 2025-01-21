@@ -26,15 +26,15 @@ MODALITY_MAPPING = {
 }
 CUSTOM_PALETTE = {
     "ais": "#FF8B94",
+    "point": "#9C89E2",
+    "box": "#FFE278",
     "ip": "#56A4C4",
     "ib": "#82D37E",
-    "single box": "#FFE278",
-    "single point": "#9C89E2"
 }
 
 
 def plot_results(df):
-    metrics = ['ais', 'ip', 'ib', 'single box', 'single point'] 
+    metrics = ['ais', 'point', 'box', 'ip', 'ib'] 
     df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
     df['model'] = df['model'].replace({'vit_b': 'SAM'})
     custom_order = list(MODALITY_MAPPING.keys())
