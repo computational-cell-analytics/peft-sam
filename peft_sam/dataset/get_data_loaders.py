@@ -330,11 +330,13 @@ def _fetch_microscopy_loaders(
 #
 
 
-def _transform_identity(raw, labels):  # This is done to avoid any transformations.
+# Avoid any transformations.
+def _transform_identity(raw, labels):
     return raw, labels
 
 
-def _jsrt_label_trafo(labels):  # maps labels to expected instance structure (to train for instance segmentation).
+# Maps labels to expected instance structure (to train for interactive segmentation).
+def _jsrt_label_trafo(labels):
     neu_label = np.zeros_like(labels)
     lungs = (labels == 255)  # Labels for lungs
     lungs = connected_components(lungs)  # Ensure both lung volumes unique
@@ -343,6 +345,7 @@ def _jsrt_label_trafo(labels):  # maps labels to expected instance structure (to
     return neu_label
 
 
+# Ensures all labels are unique.
 def _amd_sd_label_trafo(labels):
     labels = connected_components(labels).astype(labels.dtype)
     return labels
@@ -350,10 +353,12 @@ def _amd_sd_label_trafo(labels):
 
 # Adjusting the data alignment with switching axes.
 def _mice_tumseg_raw_trafo(raw):
+    raw = sam_training.util.normalize_to_8bit(raw)
     raw = raw.transpose(0, 2, 1)
     return raw
 
 
+# Adjusting the data alignment with switching axes.
 def _mice_tumseg_label_trafo(labels):
     labels = connected_components(labels).astype(labels.dtype)
     labels = labels.transpose(0, 2, 1)
@@ -390,11 +395,13 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 path=os.path.join(data_root, "motum"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
+                ndim=2,
                 split=split,
                 modality="flair",
-                raw_transform=sam_training.identity,
+                raw_transform=sam_training.util.normalize_to_8bit,
                 transform=_transform_identity,
                 sampler=MinInstanceSampler(min_size=50),
+                n_samples=200,
                 resize_inputs=True,
                 download=True,
                 shuffle=True,
@@ -471,13 +478,15 @@ def _fetch_medical_loaders(dataset_name, data_root):
             # Tumor segmentation in microCT.
             return datasets.get_mice_tumseg_loader(
                 path=os.path.join(data_root, "mice_tumseg"),
-                batch_size=1,
+                batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
+                ndim=2,
                 split="test",
                 raw_transform=_mice_tumseg_raw_trafo,
                 label_transform=_mice_tumseg_label_trafo,
                 transform=_transform_identity,
                 sampler=MinInstanceSampler(min_size=25),
+                n_samples=250,
                 resize_inputs=True,
                 download=True,
                 shuffle=True,

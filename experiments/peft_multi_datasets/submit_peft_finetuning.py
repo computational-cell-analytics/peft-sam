@@ -67,7 +67,7 @@ def write_batch_script(
 #SBATCH -G A100:1
 #SBATCH -A gzz0001
 #SBATCH --constraint=80gb
-#SBATCH --name finetune-sam
+#SBATCH --job-name=finetune-sam
 
 source ~/.bashrc
 micromamba activate {env_name}
