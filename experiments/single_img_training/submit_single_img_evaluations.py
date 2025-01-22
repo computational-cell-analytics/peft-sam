@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
+from micro_sam.util import export_custom_qlora_model
 from peft_sam.dataset.preprocess_datasets import preprocess_data
 
 ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
@@ -161,6 +162,14 @@ def run_peft_evaluations():
             # run peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
                 checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"
+
+                # Export custom QLoRA model
+                if peft_method == "qlora":
+                    inference_checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/lora/{dataset}_sam/for_inference/best.pt"
+                    os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
+                    export_custom_qlora_model(None, checkpoint, model, inference_checkpoint)
+                    checkpoint = inference_checkpoint
+
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
                 result_path = os.path.join(EXPERIMENT_ROOT, peft_method, model, dataset)
                 if os.path.exists(result_path):
@@ -170,7 +179,7 @@ def run_peft_evaluations():
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 for current_setup in ALL_SCRIPTS:
                     write_batch_script(
-                        env_name="peft-sam",
+                        env_name="sam",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
