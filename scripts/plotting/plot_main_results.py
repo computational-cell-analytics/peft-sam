@@ -3,26 +3,25 @@ import matplotlib.pyplot as plt
 
 DATASET_MAPPING = {
     "covid_if": "CovidIF",
-    "mitolab_glycolytic_muscle": "MitoLab",
-    "platy_cilia": "Platynereis",
     "orgasegment": "OrgaSegment",
     "gonuclear": "GoNuclear",
     "hpa": "HPA",
-    "livecell": "LIVECell",
+    "mitolab_glycolytic_muscle": "MitoLab",
+    "platy_cilia": "Platynereis",
 }
 MODALITY_MAPPING = {
     "vanilla": "Base Model",
     "generalist": "Base Model",
-    "full_ft": "Full Ft",
-    "lora": "LoRA",
-    "adaptformer": "AdaptFormer",
+    "freeze_encoder": "Freeze Encoder",
+    "LayerNormSurgery": "LN Tune",
+    "BiasSurgery": "Bias Tune",
     "ssf": "SSF",
     "fact": "FacT",
     "qlora": "QLoRA",
-    "BiasSurgery": "Bias Tune",
+    "lora": "LoRA",
+    "adaptformer": "AdaptFormer",
     "AttentionSurgery": "Attn Tune",
-    "LayerNormSurgery": "LN Tune",
-    "freeze_encoder": "Freeze Encoder",
+    "full_ft": "Full Ft",
 }
 CUSTOM_PALETTE = {
     "ais": "#FF8B94",
@@ -37,8 +36,15 @@ def plot_results(df):
     metrics = ['ais', 'point', 'box', 'ip', 'ib'] 
     df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
     df['model'] = df['model'].replace({'vit_b': 'SAM'})
-    custom_order = list(MODALITY_MAPPING.keys())
-    df = df.sort_values(by='modality', key=lambda x: x.map(lambda val: custom_order.index(val) if val in custom_order else len(custom_order)))
+    modality_order = list(MODALITY_MAPPING.keys())
+    df = df.sort_values(
+        by='modality', key=lambda x: x.map(lambda val: modality_order.index(val) if val in modality_order
+                                           else len(modality_order))
+    )
+    #df = df.sort_values(
+    #    by='dataset', key=lambda x: x.map(lambda val: dataset_order.index(val) if val in dataset_order
+    #                                      else len(dataset_order))
+    #)
 
     df['modality'] = df['modality'].replace(MODALITY_MAPPING)
     df['dataset'] = df['dataset'].replace(DATASET_MAPPING)
@@ -46,11 +52,11 @@ def plot_results(df):
     df = df[df['dataset'] != 'LIVECell']
 
     # Unique datasets and models
-    datasets = df['dataset'].unique()
+    datasets = DATASET_MAPPING.values()
     models = df['model'].unique()
     # Define markers for models
     model_markers = {
-        r"$\mu$-SAM": "*",
+        r"$\mu$-SAM": "^",
         "SAM": "x"
     }
     # Create a plot for each dataset
@@ -83,21 +89,21 @@ def plot_results(df):
                 point_y = dataset_data.loc[idx, metric]
                 circle_size = circle_sizes[rank]  # Size decreases with rank
 
-                # Add a circle around the point
+                # Add a circle airound the point
                 ax.scatter(
                     [point_x], [point_y],
                     s=circle_size, color=CUSTOM_PALETTE[metric], alpha=0.5, linewidth=2
                 )
 
         # Set titles and labels
-        ax.set_title(dataset, fontsize=12)  # Remove underscores, capitalize
+        ax.set_title(dataset, fontsize=15)  # Remove underscores, capitalize
         ax.tick_params(axis='x', rotation=90)
         ax.set_xticks(model_data['modality'])
-        ax.set_xticklabels(model_data['modality'], rotation=90)
+        ax.set_xticklabels(model_data['modality'], rotation=90, fontsize=13)
 
     fig.tight_layout(rect=[0.05, 0.04, 0.97, 0.98])  # Adjust space for the legend
     # fig.suptitle("Comparison of PEFT methods", fontsize=16, y=0.98)
-    fig.subplots_adjust(hspace=0.4)
+    fig.subplots_adjust(hspace=0.44)
 
     metric_handles = [
         plt.Line2D([0], [0], color=CUSTOM_PALETTE[metric], lw=2) for metric in metrics
@@ -120,12 +126,12 @@ def plot_results(df):
 
     # Add the legend to the figure
     fig.legend(
-        handles, labels, loc='lower center', ncol=10, fontsize=10,
+        handles, labels, loc='lower center', ncol=10, fontsize=13, 
     )
-    plt.text(x=-25, y=0.85, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
+    plt.text(x=-25.5, y=0.8, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
     plt.savefig('../../results/figures/main_results.png', dpi=300)
 
 
 if __name__ == "__main__":
-    df = pd.read_csv('../../results/main_results.csv')
+    df = pd.read_csv('../../results/main_results_new.csv')
     plot_results(df)
