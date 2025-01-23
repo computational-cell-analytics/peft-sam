@@ -104,7 +104,7 @@ def main():
         "--dataset", "-d", type=str, required=True, help="The dataset to use for training."
     )
     parser.add_argument(
-        "--input_path", "-i", type=str, default="/mnt/vast-nhr/projects/cidas/cca/test/data",
+        "--input_path", "-i", type=str, default="/mnt/vast-nhr/projects/cidas/cca/experiments/patho_sam/data",
         help="Specifies the path to the data directory (set to ./data if dataset is at ./data/<dataset_name>)"
     )
     parser.add_argument(

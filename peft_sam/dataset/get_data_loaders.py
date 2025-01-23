@@ -481,7 +481,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
                 ndim=2,
-                split="test",
+                split=split,
                 raw_transform=_mice_tumseg_raw_trafo,
                 label_transform=_mice_tumseg_label_trafo,
                 transform=_transform_identity,
