@@ -4,7 +4,7 @@ import argparse
 import torch
 
 import micro_sam.training as sam_training
-from micro_sam.util import export_custom_sam_model
+from micro_sam.util import export_custom_sam_model, export_custom_qlora_model
 
 from peft_sam.util import get_peft_kwargs
 from peft_sam.dataset.get_data_loaders import _fetch_microscopy_loaders, _fetch_medical_loaders
@@ -77,6 +77,14 @@ def finetune_sam(args):
         )
         export_custom_sam_model(
             checkpoint_path=checkpoint_path, model_type=model_type, save_path=args.export_path,
+        )
+
+    if args.quantize:
+        checkpoint_path = os.path.join(
+            "" if args.save_root is None else args.save_root, "checkpoints", checkpoint_name, "for_inference", "best.pt"
+        )
+        export_custom_qlora_model(
+            checkpoint_path=checkpoint_path, model_type=model_type, save_path=args.checkpoint_path,
         )
 
 

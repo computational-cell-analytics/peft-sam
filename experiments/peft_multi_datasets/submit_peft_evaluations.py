@@ -3,12 +3,13 @@ import shutil
 import subprocess
 from datetime import datetime
 from peft_sam.dataset.preprocess_datasets import preprocess_data
+from micro_sam.util import export_custom_qlora_model
 
 from submit_peft_finetuning import ALL_DATASETS, PEFT_METHODS
 
 
 ALL_SCRIPTS = ["evaluate_instance_segmentation", "iterative_prompting"]
-# EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
+EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
 
 
 def write_batch_script(
@@ -187,6 +188,12 @@ def run_peft_evaluations(args):
             # run peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
                 checkpoint = f"{experiment_folder}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"
+                if peft_method == "qlora":
+                    inference_checkpoint = f"{experiment_folder}/checkpoints/{model}/lora/{dataset}_sam/for_inference/best.pt"  # noqa
+                    os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
+                    export_custom_qlora_model(None, checkpoint, model, inference_checkpoint)
+                    checkpoint = inference_checkpoint
+
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
                 result_path = os.path.join(experiment_folder, peft_method, model, dataset)
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
@@ -195,7 +202,7 @@ def run_peft_evaluations(args):
                 os.makedirs(result_path, exist_ok=False)
                 for current_setup in ALL_SCRIPTS:
                     write_batch_script(
-                        env_name="peft-sam",
+                        env_name="sam",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
