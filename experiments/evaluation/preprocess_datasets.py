@@ -176,7 +176,7 @@ def _process_mice_tumseg_data(data_path, view):
         label_transform=_label_trafo,
         transform=_transform_identity,
         sampler=MinInstanceSampler(min_size=25),
-        n_samles=100,
+        n_samples=100,
         resize_inputs=True,
         download=True,
         shuffle=True,
