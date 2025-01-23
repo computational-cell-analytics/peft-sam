@@ -8,7 +8,11 @@ from micro_sam.evaluation.livecell import _get_livecell_paths
 
 
 # ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
-ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
+
+if os.path.exists("/media/anwai/ANWAI"):  # for Anwai
+    ROOT = "/media/anwai/ANWAI/data"
+else:
+    ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
 
 EXPERIMENT_ROOT = "/scratch/projects/nim00007/sam/experiments/new_models"
 
