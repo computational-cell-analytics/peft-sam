@@ -17,8 +17,8 @@ def _transform_identity(raw, labels):  # This is done to avoid any transformatio
 
 
 def _store_images(name, data_path, loader, view, is_rgb=False):
-    raw_dir = os.path.join(data_path, "slices", "raw")
-    labels_dir = os.path.join(data_path, "slices", "labels")
+    raw_dir = os.path.join(data_path, "slices", "test", "raw")
+    labels_dir = os.path.join(data_path, "slices", "test", "labels")
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(labels_dir, exist_ok=True)
 
@@ -28,8 +28,6 @@ def _store_images(name, data_path, loader, view, is_rgb=False):
 
         if is_rgb:  # Convert batch inputs to channels last.
             x = x.transpose(1, 2, 0)
-
-        print(x.shape, y.shape)
 
         if view:
             import napari
@@ -99,7 +97,7 @@ def _process_psfhs_data(data_path, view):
         shuffle=True,
         num_workers=16,
     )
-    _store_images("motum", os.path.join(data_path, "psfhs"), loader, view, is_rgb=True)
+    _store_images("psfhs", os.path.join(data_path, "psfhs"), loader, view, is_rgb=True)
 
 
 def _process_jsrt_data(data_path, view):

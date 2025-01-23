@@ -5,11 +5,26 @@ from datetime import datetime
 from peft_sam.dataset.preprocess_datasets import preprocess_data
 from micro_sam.util import export_custom_qlora_model
 
-from submit_peft_finetuning import ALL_DATASETS, PEFT_METHODS
+from submit_peft_finetuning import ALL_DATASETS
 
 
-ALL_SCRIPTS = ["evaluate_instance_segmentation", "iterative_prompting"]
+PEFT_METHODS = {
+    "lora": {"peft_rank": 32},
+    "ssf": {"peft_rank": 2},
+    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "proj_size": 64},
+    "fact": {"peft_rank": 16, "dropout": 0.1},
+    "AttentionSurgery": {"peft_rank": 2},
+    "BiasSurgery": {"peft_rank": 2},
+    "LayerNormSurgery": {"peft_rank": 2},
+    "qlora": {"peft_rank": 32, "quantize": True},
+}
+
+
 EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
+ALL_SCRIPTS = [
+    # "evaluate_instance_segmentation",
+    "iterative_prompting",
+]
 
 
 def write_batch_script(
@@ -138,52 +153,49 @@ def run_peft_evaluations(args):
             # run generalist / vanilla
             modality = "generalist" if model == gen_model else "vanilla"
             result_path = os.path.join(experiment_folder, modality, dataset)
-            if not os.path.exists(result_path):
-                os.makedirs(result_path, exist_ok=False)
-                for current_setup in ALL_SCRIPTS:
-                    write_batch_script(
-                        env_name="sam",
-                        out_path=get_batch_script_names(tmp_folder),
-                        inference_setup=current_setup,
-                        checkpoint=None,
-                        model_type=model,
-                        experiment_folder=result_path,
-                        dataset=dataset
-                    )
+            os.makedirs(result_path, exist_ok=True)
+            for current_setup in ALL_SCRIPTS:
+                write_batch_script(
+                    env_name="super",
+                    out_path=get_batch_script_names(tmp_folder),
+                    inference_setup=current_setup,
+                    checkpoint=None,
+                    model_type=model,
+                    experiment_folder=result_path,
+                    dataset=dataset
+                )
 
             # full finetuning
             checkpoint = f"{experiment_folder}/checkpoints/{model}/full_ft/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
             result_path = os.path.join(experiment_folder, "full_ft", model, dataset)
-            if not os.path.exists(result_path):
-                os.makedirs(result_path, exist_ok=False)
-                for current_setup in ALL_SCRIPTS:
-                    write_batch_script(
-                        env_name="sam",
-                        out_path=get_batch_script_names(tmp_folder),
-                        inference_setup=current_setup,
-                        checkpoint=checkpoint,
-                        model_type=model,
-                        experiment_folder=result_path,
-                        dataset=dataset
-                    )
+            os.makedirs(result_path, exist_ok=True)
+            for current_setup in ALL_SCRIPTS:
+                write_batch_script(
+                    env_name="super",
+                    out_path=get_batch_script_names(tmp_folder),
+                    inference_setup=current_setup,
+                    checkpoint=checkpoint,
+                    model_type=model,
+                    experiment_folder=result_path,
+                    dataset=dataset
+                )
 
             # run frozen encoder
             checkpoint = f"{experiment_folder}/checkpoints/{model}/freeze_encoder/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
             result_path = os.path.join(experiment_folder, "freeze_encoder", model, dataset)
-            if not os.path.exists(result_path):
-                os.makedirs(result_path, exist_ok=False)
-                for current_setup in ALL_SCRIPTS:
-                    write_batch_script(
-                        env_name="sam",
-                        out_path=get_batch_script_names(tmp_folder),
-                        inference_setup=current_setup,
-                        checkpoint=checkpoint,
-                        model_type=model,
-                        experiment_folder=result_path,
-                        dataset=dataset
-                    )
+            os.makedirs(result_path, exist_ok=True)
+            for current_setup in ALL_SCRIPTS:
+                write_batch_script(
+                    env_name="super",
+                    out_path=get_batch_script_names(tmp_folder),
+                    inference_setup=current_setup,
+                    checkpoint=checkpoint,
+                    model_type=model,
+                    experiment_folder=result_path,
+                    dataset=dataset
+                )
 
             # run peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
@@ -197,12 +209,11 @@ def run_peft_evaluations(args):
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
                 result_path = os.path.join(experiment_folder, peft_method, model, dataset)
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
-                if os.path.exists(result_path):
-                    continue
-                os.makedirs(result_path, exist_ok=False)
+
+                os.makedirs(result_path, exist_ok=True)
                 for current_setup in ALL_SCRIPTS:
                     write_batch_script(
-                        env_name="sam",
+                        env_name="super",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,

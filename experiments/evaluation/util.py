@@ -7,7 +7,9 @@ from torch_em.data import datasets
 from micro_sam.evaluation.livecell import _get_livecell_paths
 
 
-ROOT = "/scratch/usr/nimcarot/data/"
+# ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
+ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
+
 EXPERIMENT_ROOT = "/scratch/projects/nim00007/sam/experiments/new_models"
 
 FILE_SPECS = {
@@ -23,7 +25,6 @@ DATASETS = [
     # organelles (EM)
     # - out-of-domain
     "mitolab/glycolytic_muscle", "platynereis/cilia",
-    # TODO: other microscopy datasets are missing here I think.
 
     # out-of-domain (MI)
     "papila", "motum", "psfhs", "jsrt", "amd_sd", "mice_tumseg"
