@@ -35,56 +35,67 @@ def run_evaluation_over_images_per_class(gt_paths, pred_folder):
     return np.mean(per_image_dice)
 
 
-def main():
+def main(args):
     os.makedirs("./results", exist_ok=True)
-    for dataset in ["mice_tumseg"]:
-        _, gt_paths = get_paths(dataset, split="test")
-        experiment_folders = glob(os.path.join(EXPERIMENT_ROOT, "**", dataset), recursive=True)
 
-        for exp_folder in experiment_folders:
-            experiment = exp_folder[len(EXPERIMENT_ROOT)+1:]
-            comps = experiment.rsplit("/")
+    dataset = args.dataset
+    assert dataset in ["papila", "motum", "psfhs", "jsrt", "amd_sd", "mice_tumseg"]
 
-            # Define per experiment name to store average dice score.
-            if len(comps) == 2:  # these are base FMs.
-                name = f"{comps[0]}"
-            else:  # these are our FT models.
-                name = f"{comps[0]}-{comps[1]}"
+    _, gt_paths = get_paths(dataset, split="test")
+    experiment_folders = glob(os.path.join(EXPERIMENT_ROOT, "**", dataset), recursive=True)
 
-            # For box prompts
+    for exp_folder in experiment_folders:
+        experiment = exp_folder[len(EXPERIMENT_ROOT)+1:]
+        comps = experiment.rsplit("/")
+
+        # Define per experiment name to store average dice score.
+        if len(comps) == 2:  # these are base FMs.
+            name = f"{comps[0]}"
+        else:  # these are our FT models.
+            name = f"{comps[0]}-{comps[1]}"
+
+        # For box prompts
+        box_path = f"./results/{dataset}_{name}_box.csv"
+        if not os.path.exists(box_path):
             box_res = []
             for pred_folder in natsorted(glob(os.path.join(exp_folder, "start_with_box", "iteration*"))):
                 box_res.append(
                     pd.DataFrame.from_dict(
-                        [{
-                            "iteration": os.path.basename(pred_folder),
-                            "dice_score": run_evaluation_over_images_per_class(gt_paths, pred_folder)
-                        }]
+                        [
+                            {
+                                "iteration": os.path.basename(pred_folder),
+                                "dice_score": run_evaluation_over_images_per_class(gt_paths, pred_folder)
+                            }
+                        ]
                     )
                 )
             box_res = pd.concat(box_res, ignore_index=True)
-            box_res.to_csv(f"./results/{dataset}_{name}_box.csv")
+            box_res.to_csv(box_path)
 
-            # For point prompts
+        # For point prompts
+        point_path = f"./results/{dataset}_{name}_point.csv"
+        if not os.path.exists(point_path):
             point_res = []
-            for pred_folder in natsorted(glob(os.path.join(exp_folder, "start_with_box", "iteration*"))):
+            for pred_folder in natsorted(glob(os.path.join(exp_folder, "start_with_point", "iteration*"))):
                 point_res.append(
                     pd.DataFrame.from_dict(
-                        [{
-                            "iteration": os.path.basename(pred_folder),
-                            "dice_score": run_evaluation_over_images_per_class(gt_paths, pred_folder)
-                        }]
+                        [
+                            {
+                                "iteration": os.path.basename(pred_folder),
+                                "dice_score": run_evaluation_over_images_per_class(gt_paths, pred_folder)
+                            }
+                        ]
                     )
                 )
             point_res = pd.concat(point_res, ignore_index=True)
-            point_res.to_csv(f"./results/{dataset}_{name}_point.csv")
+            point_res.to_csv(point_path)
 
-            print(name)
-            print(box_res)
-            print(point_res)
-
-        breakpoint()
+        print(name)
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dataset", type=str, required=True)
+    args = parser.parse_args()
+    main(args)
