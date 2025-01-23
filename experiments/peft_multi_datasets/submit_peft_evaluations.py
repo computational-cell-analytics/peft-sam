@@ -4,25 +4,11 @@ import subprocess
 from datetime import datetime
 from peft_sam.dataset.preprocess_datasets import preprocess_data
 
-ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm'}
+from submit_peft_finetuning import ALL_DATASETS, PEFT_METHODS
 
-PEFT_METHODS = {
-    "lora": {"peft_rank": 32},
-    "ssf": {"peft_rank": 2},
-    "adaptformer": {"peft_rank": 2, "alpha": "learnable_scalar", "dropout": None, "proj_size": 64},
-    "fact": {"peft_rank": 16, "dropout": 0.1},
-    "AttentionSurgery": {"peft_rank": 2},
-    "BiasSurgery": {"peft_rank": 2},
-    "LayerNormSurgery": {"peft_rank": 2},
-    "qlora": {"peft_rank": 32, "quantize": True},
-    }
 
-ALL_SCRIPTS = [
-    "evaluate_instance_segmentation", "iterative_prompting"
-]
-# replace with experiment folder
-EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
+ALL_SCRIPTS = ["evaluate_instance_segmentation", "iterative_prompting"]
+# EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
 
 
 def write_batch_script(
@@ -40,21 +26,23 @@ def write_batch_script(
     alpha=None,
     proj_size=None,
     dropout=None,
-    quantize=False
+    quantize=False,
+    dry=False,
 ):
     "Writing scripts with different fold-trainings for micro-sam evaluation"
     batch_script = f"""#!/bin/bash
 #SBATCH -c 16
 #SBATCH --mem 64G
-#SBATCH -t 1-00:00:00
 #SBATCH -p grete:shared
+#SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
-#SBATCH -A nim00007
+#SBATCH -A gzz0001
 #SBATCH --constraint=80gb
 #SBATCH --job-name={inference_setup}
 
 source ~/.bashrc
-conda activate {env_name} \n"""
+micromamba activate {env_name}
+"""
 
     # python script
     inference_script_path = f"../evaluation/{inference_setup}.py"
@@ -98,8 +86,10 @@ conda activate {env_name} \n"""
     with open(_op, "w") as f:
         f.write(batch_script)
 
-    cmd = ["sbatch", _op]
-    subprocess.run(cmd)
+    if not args.dry:
+        cmd = ["sbatch", _op]
+        subprocess.run(cmd)
+
     # we run the first prompt for iterative once starting with point, and then starting with box (below)
     if inference_setup == "iterative_prompting":
         batch_script += "--box "
@@ -108,8 +98,9 @@ conda activate {env_name} \n"""
         with open(new_path, "w") as f:
             f.write(batch_script)
 
-        cmd = ["sbatch", new_path]
-        subprocess.run(cmd)
+        if not args.dry:
+            cmd = ["sbatch", new_path]
+            subprocess.run(cmd)
 
 
 def get_batch_script_names(tmp_folder):
@@ -125,18 +116,27 @@ def get_batch_script_names(tmp_folder):
     return batch_script
 
 
-def run_peft_evaluations():
+def run_peft_evaluations(args):
     "Submit python script that needs gpus with given inputs on a slurm node."
     tmp_folder = "./gpu_jobs"
+    if os.path.exists(tmp_folder):
+        shutil.rmtree("./gpu_jobs")
+
+    # experiment_folder = EXPERIMENT_ROOT  # for Caro.
+    experiment_folder = args.experiment_folder  # for Anwai and custom usage.
 
     for dataset, domain in ALL_DATASETS.items():
+        if args.dataset is not None and args.dataset != dataset:
+            continue
+
         preprocess_data(dataset)
+
         gen_model = f"vit_b_{domain}"
         models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
         for model in models:
             # run generalist / vanilla
             modality = "generalist" if model == gen_model else "vanilla"
-            result_path = os.path.join(EXPERIMENT_ROOT, modality, dataset)
+            result_path = os.path.join(experiment_folder, modality, dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
                 for current_setup in ALL_SCRIPTS:
@@ -149,10 +149,11 @@ def run_peft_evaluations():
                         experiment_folder=result_path,
                         dataset=dataset
                     )
+
             # full finetuning
-            checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/full_ft/{dataset}_sam/best.pt"
+            checkpoint = f"{experiment_folder}/checkpoints/{model}/full_ft/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, "full_ft", model, dataset)
+            result_path = os.path.join(experiment_folder, "full_ft", model, dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
                 for current_setup in ALL_SCRIPTS:
@@ -165,10 +166,11 @@ def run_peft_evaluations():
                         experiment_folder=result_path,
                         dataset=dataset
                     )
+
             # run frozen encoder
-            checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/freeze_encoder/{dataset}_sam/best.pt"
+            checkpoint = f"{experiment_folder}/checkpoints/{model}/freeze_encoder/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", model, dataset)
+            result_path = os.path.join(experiment_folder, "freeze_encoder", model, dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
                 for current_setup in ALL_SCRIPTS:
@@ -181,11 +183,12 @@ def run_peft_evaluations():
                         experiment_folder=result_path,
                         dataset=dataset
                     )
+
             # run peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
-                checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"
+                checkpoint = f"{experiment_folder}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-                result_path = os.path.join(EXPERIMENT_ROOT, peft_method, model, dataset)
+                result_path = os.path.join(experiment_folder, peft_method, model, dataset)
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 if os.path.exists(result_path):
                     continue
@@ -204,14 +207,22 @@ def run_peft_evaluations():
                     )
 
 
-def main():
-    run_peft_evaluations()
+def main(args):
+    run_peft_evaluations(args)
 
 
 if __name__ == "__main__":
-    try:
-        shutil.rmtree("./gpu_jobs")
-    except FileNotFoundError:
-        pass
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-e", "--experiment_folder", type=str, help="The directory where the results from evaluation are stored.",
+        default="/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/models",
+    )
+    parser.add_argument(
+        "-d", "--dataset", type=str, default=None,
+        help="Run the experiments for a specific supported biomedical imaging dataset."
+    )
+    parser.add_argument("--dry", action="store_true")
 
-    main()
+    args = parser.parse_args()
+    main(args)

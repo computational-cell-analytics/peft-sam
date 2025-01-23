@@ -37,6 +37,11 @@ def preprocess_data(dataset):
         for_gonuclear(os.path.join(ROOT, "gonuclear", "slices"))
     elif dataset == "hpa":
         for_hpa(os.path.join(ROOT, "hpa", "slices"))
+    else:
+        import warnings
+        warnings.warn(
+            f"Seems like the processing for '{dataset}' is either done or excluded. Please be aware of this."
+        )
 
 
 def convert_rgb(raw):
@@ -421,19 +426,3 @@ def download_all_datasets(path):
                                  channels=["protein"], download=True)
     get_hpa_segmentation_dataset(os.path.join(path, "hpa"), split="test", patch_shape=(512, 512),
                                  channels=["protein"], download=True)
-
-
-def main():
-
-    download_all_datasets(ROOT)
-
-    preprocess_data("covid_if")
-    preprocess_data("platynereis")
-    preprocess_data("mitolab")
-    preprocess_data("orgasegment")
-    preprocess_data("gonuclear")
-    preprocess_data("hpa")
-
-
-if __name__ == "__main__":
-    main()
