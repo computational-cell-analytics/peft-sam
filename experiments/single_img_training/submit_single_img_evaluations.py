@@ -159,6 +159,22 @@ def run_peft_evaluations():
                         experiment_folder=result_path,
                         dataset=dataset
                     )
+            # freeze the encoder
+            checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/freeze_encoder/{dataset}_sam/best.pt"
+            assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
+            result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", model, dataset)
+            if not os.path.exists(result_path):
+                os.makedirs(result_path, exist_ok=False)
+                for current_setup in ALL_SCRIPTS:
+                    write_batch_script(
+                        env_name="sam",
+                        out_path=get_batch_script_names(tmp_folder),
+                        inference_setup=current_setup,
+                        checkpoint=checkpoint,
+                        model_type=model,
+                        experiment_folder=result_path,
+                        dataset=dataset
+                    )
             # run peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
                 checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"

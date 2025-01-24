@@ -8,7 +8,7 @@ import micro_sam.training as sam_training
 from micro_sam.util import export_custom_sam_model
 
 from peft_sam.util import get_peft_kwargs
-from peft_sam.dataset.get_data_loaders import _fetch_loaders
+from peft_sam.dataset.get_data_loaders import _fetch_microscopy_loaders
 
 # Define the sample range and rois for the selected images
 SAMPLE_DATA = {
@@ -60,7 +60,7 @@ def finetune(args):
     train_rois = SAMPLE_DATA[dataset]['train_rois']
     val_rois = SAMPLE_DATA[dataset]['val_rois']
 
-    train_loader, val_loader = _fetch_loaders(
+    train_loader, val_loader = _fetch_microscopy_loaders(
         dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
         train_rois=train_rois, val_rois=val_rois
     )
@@ -68,7 +68,7 @@ def finetune(args):
     n_samples_train = 50 if len(train_loader) < 50 else None
     n_samples_val = 50 if len(val_loader) < 50 else None
 
-    train_loader, val_loader = _fetch_loaders(
+    train_loader, val_loader = _fetch_microscopy_loaders(
         dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
         train_rois=train_rois, val_rois=val_rois, n_train_samples=n_samples_train, n_val_samples=n_samples_val,
         batch_size=1

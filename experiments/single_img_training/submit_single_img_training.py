@@ -112,13 +112,27 @@ def run_peft_finetuning(args):
             if not cpkt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="sam",
+                    env_name="peft-sam",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
                     checkpoint_path=None,
                     checkpoint_name=checkpoint_name,
                     dataset=dataset
+                )
+            # freeze the encoder
+            checkpoint_name = f"{model}/freeze_encoder/{dataset}_sam"
+            if not cpkt_exists(checkpoint_name, args):
+                script_name = get_batch_script_names("./gpu_jobs")
+                write_batch_script(
+                    env_name="peft-sam",
+                    save_root=args.save_root,
+                    model_type=model,
+                    script_name=script_name,
+                    checkpoint_path=None,
+                    checkpoint_name=checkpoint_name,
+                    dataset=dataset,
+                    freeze='image_encoder',
                 )
             # peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():

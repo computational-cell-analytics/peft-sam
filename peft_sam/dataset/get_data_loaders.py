@@ -124,6 +124,8 @@ def _fetch_microscopy_loaders(
             min_size=5,
         )
 
+        sampler = MinInstanceSampler(min_num_instances=25)
+        
         train_loader = get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
             patch_shape=(512, 512),
