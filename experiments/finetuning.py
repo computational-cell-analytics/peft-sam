@@ -7,11 +7,11 @@ import micro_sam.training as sam_training
 from micro_sam.util import export_custom_sam_model, export_custom_qlora_model
 
 from peft_sam.util import get_peft_kwargs
-from peft_sam.dataset.get_data_loaders import _fetch_loaders
+from peft_sam.dataset.get_data_loaders import _fetch_microscopy_loaders, _fetch_medical_loaders
 
 
-def finetune(args):
-    """Code for finetuning SAM (using PEFT methods) on different data
+def finetune_sam(args):
+    """Code for finetuning SAM (using PEFT methods) on multiple biomedical imaging datasets.
     """
     # override this (below) if you have some more complex set-up and need to specify the exact gpu
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -34,7 +34,9 @@ def finetune(args):
         checkpoint_name = f"{args.model_type}/full_ft/{dataset}_sam"
 
     # all the stuff we need for training
-    train_loader, val_loader = _fetch_loaders(dataset, args.input_path)
+    get_loaders = _fetch_medical_loaders if args.medical_imaging else _fetch_microscopy_loaders
+    train_loader, val_loader = get_loaders(dataset, args.input_path)
+
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
@@ -66,6 +68,7 @@ def finetune(args):
         scheduler_kwargs=scheduler_kwargs,
         optimizer_class=optimizer_class,
         peft_kwargs=peft_kwargs,
+        with_segmentation_decoder=(not args.medical_imaging),
     )
 
     if args.export_path is not None:
@@ -86,7 +89,7 @@ def finetune(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Finetune Segment Anything for the LIVECell dataset.")
+    parser = argparse.ArgumentParser(description="Finetune Segment Anything for the biomedical imaging datasets.")
     parser.add_argument(
         "--model_type", "-m", default="vit_b",
         help="The model type to use for fine-tuning. Either vit_h, vit_b or vit_l."
@@ -100,18 +103,16 @@ def main():
         help="Where to export the finetuned model to. The exported model can be used in the annotation tools."
     )
     parser.add_argument(
-        "--freeze", type=str, nargs="+", default=None,
-        help="Which parts of the model to freeze for finetuning."
+        "--freeze", type=str, nargs="+", default=None, help="Which parts of the model to freeze for finetuning."
     )
     parser.add_argument(
         "--n_objects", type=int, default=25, help="The number of instances (objects) per batch used for finetuning."
     )
     parser.add_argument(
-        "--dataset", "-d", type=str, required=True,
-        help="The dataset to use for training."
+        "--dataset", "-d", type=str, required=True, help="The dataset to use for training."
     )
     parser.add_argument(
-        "--input_path", "-i", type=str, default="/scratch/usr/nimcarot/data",
+        "--input_path", "-i", type=str, default="/mnt/vast-nhr/projects/cidas/cca/experiments/patho_sam/data",
         help="Specifies the path to the data directory (set to ./data if dataset is at ./data/<dataset_name>)"
     )
     parser.add_argument(
@@ -136,10 +137,13 @@ def main():
         "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"
     )
     parser.add_argument(
+        "--medical_imaging", action="store_true", help="Whether to finetune SAM on medical imaging datasets."
+    )
+    parser.add_argument(
         "--quantize", action="store_true", help="Whether to quantize the model."
     )
     args = parser.parse_args()
-    finetune(args)
+    finetune_sam(args)
 
 
 if __name__ == "__main__":

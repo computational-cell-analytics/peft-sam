@@ -1,24 +1,25 @@
 import os
 
 import numpy as np
+from skimage.measure import label as connected_components
 
 import torch
 
-from torch_em.util.debug import check_loader
+from torch_em.data import datasets
 from torch_em.data import MinInstanceSampler
 from torch_em.transform.label import PerObjectDistanceTransform
-from torch_em.data.datasets import light_microscopy, electron_microscopy
 
 import micro_sam.training as sam_training
 from micro_sam.training.util import ResizeLabelTrafo
 
 from ..util import RawTrafo
+
 from . import (
     get_hpa_segmentation_loader, get_livecell_loader, get_gonuclear_loader, get_orgasegment_loader
 )
 
 
-def _fetch_loaders(
+def _fetch_microscopy_loaders(
     dataset_name,
     data_root,
     train_sample_range=None,
@@ -29,6 +30,7 @@ def _fetch_loaders(
     n_val_samples=None,
     batch_size=2
 ):
+
     if dataset_name == "covid_if":
 
         # 1, Covid IF does not have internal splits. For this example I chose first 10 samples for training,
@@ -36,13 +38,14 @@ def _fetch_loaders(
 
         raw_transform = RawTrafo(desired_shape=(512, 512))
         label_transform = ResizeLabelTrafo((512, 512))
-
         sampler = MinInstanceSampler()
+
         if train_sample_range is None:
             train_sample_range = (0, 10)
         if val_sample_range is None:
             val_sample_range = (10, 13)
-        train_loader = light_microscopy.get_covid_if_loader(
+
+        train_loader = datasets.get_covid_if_loader(
             path=os.path.join(data_root, "covid_if"),
             patch_shape=(512, 512),
             batch_size=batch_size,
@@ -51,11 +54,12 @@ def _fetch_loaders(
             num_workers=16,
             shuffle=True,
             download=True,
+            sampler=sampler,
             raw_transform=raw_transform,
             label_transform=label_transform,
             n_samples=n_train_samples
         )
-        val_loader = light_microscopy.get_covid_if_loader(
+        val_loader = datasets.get_covid_if_loader(
             path=os.path.join(data_root, "covid_if"),
             patch_shape=(512, 512),
             batch_size=batch_size,
@@ -63,6 +67,7 @@ def _fetch_loaders(
             target="cells",
             num_workers=16,
             download=True,
+            sampler=sampler,
             raw_transform=raw_transform,
             label_transform=label_transform,
             n_samples=n_val_samples
@@ -73,10 +78,9 @@ def _fetch_loaders(
             distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
             min_size=25
         )
-
         sampler = MinInstanceSampler(min_num_instances=25)
-
         raw_transform = sam_training.identity  # the current workflow avoids rescaling the inputs to [-1, 1]
+
         train_loader = get_livecell_loader(
             path=os.path.join(data_root, "livecell"),
             patch_shape=(520, 704),
@@ -93,6 +97,7 @@ def _fetch_loaders(
             sample_range=train_sample_range,
             n_samples=n_train_samples
         )
+
         val_loader = get_livecell_loader(
             path=os.path.join(data_root, "livecell"),
             patch_shape=(520, 704),
@@ -116,10 +121,8 @@ def _fetch_loaders(
         raw_transform = RawTrafo(desired_shape=(512, 512), triplicate_dims=True, do_padding=False)
         label_transform = PerObjectDistanceTransform(
             distances=True, boundary_distances=True, directed_distances=False, foreground=True, instances=True,
-            min_size=5
+            min_size=5,
         )
-
-        sampler = MinInstanceSampler(min_num_instances=5)
 
         train_loader = get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
@@ -135,6 +138,7 @@ def _fetch_loaders(
             sample_range=train_sample_range,
             n_samples=n_train_samples
         )
+
         val_loader = get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
             patch_shape=(512, 512),
@@ -151,7 +155,6 @@ def _fetch_loaders(
 
     elif dataset_name == "mitolab_glycolytic_muscle":
         # 4. This dataset would need aspera-cli to be installed, I'll provide you with this data
-        # ...
         if train_rois is None:
             train_rois = np.s_[0:175, :, :]
         if val_rois is None:
@@ -159,10 +162,9 @@ def _fetch_loaders(
 
         raw_transform = RawTrafo((512, 512), do_padding=True)
         label_transform = ResizeLabelTrafo((512, 512), min_size=5)
-
         sampler = MinInstanceSampler(min_num_instances=5)
 
-        train_loader = electron_microscopy.cem.get_benchmark_loader(
+        train_loader = datasets.cem.get_benchmark_loader(
             path=os.path.join(data_root, "mitolab"),
             dataset_id=3,
             batch_size=batch_size,
@@ -177,7 +179,7 @@ def _fetch_loaders(
             ndim=2,
             n_samples=n_train_samples
         )
-        val_loader = electron_microscopy.cem.get_benchmark_loader(
+        val_loader = datasets.cem.get_benchmark_loader(
             path=os.path.join(data_root, "mitolab"),
             dataset_id=3,
             batch_size=batch_size,
@@ -205,10 +207,9 @@ def _fetch_loaders(
 
         raw_transform = RawTrafo((1, 512, 512))
         label_transform = ResizeLabelTrafo((512, 512), min_size=3)
-
         sampler = MinInstanceSampler(min_num_instances=3)
 
-        train_loader = electron_microscopy.get_platynereis_cilia_loader(
+        train_loader = datasets.get_platynereis_cilia_loader(
             path=os.path.join(data_root, "platynereis"),
             patch_shape=(1, 512, 512),
             ndim=2,
@@ -223,7 +224,7 @@ def _fetch_loaders(
             sample_ids=list(train_rois.keys()),
             n_samples=n_val_samples
         )
-        val_loader = electron_microscopy.get_platynereis_cilia_loader(
+        val_loader = datasets.get_platynereis_cilia_loader(
             path=os.path.join(data_root, "platynereis"),
             patch_shape=(1, 512, 512),
             ndim=2,
@@ -261,6 +262,7 @@ def _fetch_loaders(
             rois=train_rois,
             n_samples=n_train_samples
         )
+
         val_loader = get_gonuclear_loader(
             path=os.path.join(data_root, "gonuclear"),
             patch_shape=(1, 512, 512),
@@ -318,22 +320,182 @@ def _fetch_loaders(
         )
 
     else:
-        raise ValueError(f"{dataset_name} is not a valid dataset name.")
+        raise ValueError(f"{dataset_name} is not a valid microscopy dataset name.")
 
     return train_loader, val_loader
 
 
-def _verify_loaders():
-    for dataset_name in [
-        "covid_if", "livecell", "orgasegment", "mitolab_glycolytic_muscle", "platy_cilia", "gonuclear", "hpa"
-    ]:
-        train_loader, val_loader = _fetch_loaders(dataset_name=dataset_name, data_root="/scratch/usr/nimcarot/data")
-
-        # NOTE: if using on the cluster, napari visualization won't work with "check_loader".
-        # turn "plt=True" and provide path to save the matplotlib outputs of the loader.
-        check_loader(train_loader, 8, plt=True, save_path=f"./{dataset_name}_train_loader.png")
-        check_loader(val_loader, 8, plt=True, save_path=f"./{dataset_name}_val_loader.png")
+#
+# MEDICAL IMAGING DATALOADERS AND IMPORTANT TRANSFORMS
+#
 
 
-if __name__ == "__main__":
-    _verify_loaders()
+# Avoid any transformations.
+def _transform_identity(raw, labels):
+    return raw, labels
+
+
+# Maps labels to expected instance structure (to train for interactive segmentation).
+def _jsrt_label_trafo(labels):
+    neu_label = np.zeros_like(labels)
+    lungs = (labels == 255)  # Labels for lungs
+    lungs = connected_components(lungs)  # Ensure both lung volumes unique
+    neu_label[lungs > 0] = lungs[lungs > 0]  # Map both lungs to new label.
+    neu_label[labels == 85] = np.max(neu_label) + 1   # Belongs to heart labels.
+    return neu_label
+
+
+# Ensures all labels are unique.
+def _amd_sd_label_trafo(labels):
+    labels = connected_components(labels).astype(labels.dtype)
+    return labels
+
+
+# Adjusting the data alignment with switching axes.
+def _mice_tumseg_raw_trafo(raw):
+    raw = sam_training.util.normalize_to_8bit(raw)
+    raw = raw.transpose(0, 2, 1)
+    return raw
+
+
+# Adjusting the data alignment with switching axes.
+def _mice_tumseg_label_trafo(labels):
+    labels = connected_components(labels).astype(labels.dtype)
+    labels = labels.transpose(0, 2, 1)
+    return labels
+
+
+def _fetch_medical_loaders(dataset_name, data_root):
+
+    if dataset_name == "papila":
+
+        def _get_papila_loaders(split):
+            # Optic disc in fundus.
+            return datasets.get_papila_loader(
+                path=os.path.join(data_root, "papila"),
+                batch_size=2 if split == "train" else 1,
+                patch_shape=(1, 512, 512),
+                split=split,
+                task="cup",
+                raw_transform=sam_training.identity,
+                transform=_transform_identity,
+                sampler=MinInstanceSampler(),
+                resize_inputs=True,
+                download=True,
+                shuffle=True,
+                num_workers=16,
+            )
+        get_loaders = _get_papila_loaders
+
+    elif dataset_name == "motum":
+
+        def _get_motum_loaders(split):
+            # Tumor segmentation in MRI.
+            return datasets.get_motum_loader(
+                path=os.path.join(data_root, "motum"),
+                batch_size=2 if split == "train" else 1,
+                patch_shape=(1, 512, 512),
+                ndim=2,
+                split=split,
+                modality="flair",
+                raw_transform=sam_training.util.normalize_to_8bit,
+                transform=_transform_identity,
+                sampler=MinInstanceSampler(min_size=50),
+                n_samples=200,
+                resize_inputs=True,
+                download=True,
+                shuffle=True,
+                num_workers=16,
+            )
+        get_loaders = _get_motum_loaders
+
+    elif dataset_name == "psfhs":
+
+        def _get_psfhs_loaders(split):
+            # Pubic symphysis and fetal head in US.
+            return datasets.get_psfhs_loader(
+                path=os.path.join(data_root, "psfhs"),
+                batch_size=2 if split == "train" else 1,
+                patch_shape=(1, 512, 512),
+                split=split,
+                raw_transform=sam_training.identity,
+                transform=_transform_identity,
+                sampler=MinInstanceSampler(),
+                resize_inputs=True,
+                download=True,
+                shuffle=True,
+                num_workers=16,
+            )
+        get_loaders = _get_psfhs_loaders
+
+    elif dataset_name == "jsrt":
+
+        def _get_jsrt_loaders(split):
+            # Lung and heart segmentation in X-Ray
+            return datasets.get_jsrt_loader(
+                path=os.path.join(data_root, "jsrt"),
+                batch_size=2 if split == "train" else 1,
+                patch_shape=(512, 512),
+                split="train",
+                choice="Segmentation02",
+                raw_transform=sam_training.identity,
+                transform=_transform_identity,
+                label_transform=_jsrt_label_trafo,
+                sampler=MinInstanceSampler(),
+                resize_inputs=True,
+                download=True,
+                shuffle=True,
+                num_workers=16,
+            )
+        get_loaders = _get_jsrt_loaders
+
+    elif dataset_name == "amd_sd":
+
+        def _get_amd_sd_loaders(split):
+            # Lesion segmentation in OCT.
+            loader = datasets.get_amd_sd_loader(
+                path=os.path.join(data_root, "amd_sd"),
+                batch_size=2 if split == "train" else 1,
+                patch_shape=(1, 512, 512),
+                split=split,
+                raw_transform=sam_training.identity,
+                transform=_transform_identity,
+                label_transform=_amd_sd_label_trafo,
+                sampler=MinInstanceSampler(min_size=10),
+                resize_inputs=True,
+                download=True,
+                shuffle=True,
+                num_workers=16,
+            )
+            loader.dataset.max_sampling_attempts = 10000
+            return loader
+
+        get_loaders = _get_amd_sd_loaders
+
+    elif dataset_name == "mice_tumseg":
+
+        def _get_mice_tumseg_loaders(split):
+            # Tumor segmentation in microCT.
+            return datasets.get_mice_tumseg_loader(
+                path=os.path.join(data_root, "mice_tumseg"),
+                batch_size=2 if split == "train" else 1,
+                patch_shape=(1, 512, 512),
+                ndim=2,
+                split=split,
+                raw_transform=_mice_tumseg_raw_trafo,
+                label_transform=_mice_tumseg_label_trafo,
+                transform=_transform_identity,
+                sampler=MinInstanceSampler(min_size=25),
+                n_samples=250,
+                resize_inputs=True,
+                download=True,
+                shuffle=True,
+                num_workers=16,
+            )
+        get_loaders = _get_mice_tumseg_loaders
+
+    else:
+        raise ValueError(f"{dataset_name} is not a valid medical imaging dataset name.")
+
+    train_loader, val_loader = get_loaders("train"), get_loaders("val")
+    return train_loader, val_loader

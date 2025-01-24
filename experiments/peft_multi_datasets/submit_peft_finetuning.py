@@ -3,8 +3,27 @@ import shutil
 import subprocess
 from datetime import datetime
 
-ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm'}
+
+ALL_DATASETS = {
+    # LM DATASETS
+    'covid_if': 'lm',
+    'orgasegment': 'lm',
+    'gonuclear': 'lm',
+    'hpa': 'lm',
+    'livecell': 'lm',
+
+    # EM DATASETS
+    'mitolab_glycolytic_muscle': 'em_organelles',
+    'platy_cilia': 'em_organelles',
+
+    # MEDICAL IMAGING DATASETS
+    'papila': 'medical_imaging',
+    'motum': 'medical_imaging',
+    'psfhs': 'medical_imaging',
+    'jsrt': 'medical_imaging',
+    'amd_sd': 'medical_imaging',
+    'mice_tumseg': 'medical_imaging',
+}
 
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
@@ -15,8 +34,8 @@ PEFT_METHODS = {
     "AttentionSurgery": {"peft_rank": 2},
     "BiasSurgery": {"peft_rank": 2},
     "LayerNormSurgery": {"peft_rank": 2},
-    "qlora": {"peft_rank": 32, "quantize": True},   # QLoRA
-    }
+    "qlora": {"peft_rank": 32, "quantize": True},
+}
 
 
 def write_batch_script(
@@ -34,9 +53,10 @@ def write_batch_script(
     learning_rate=1e-5,
     projection_size=None,
     freeze=None,
-    quantize=False
+    quantize=False,
+    dry=False,
 ):
-    assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
+    assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]
 
     "Writing scripts for finetuning with and without lora on different light and electron microscopy datasets"
 
@@ -46,9 +66,12 @@ def write_batch_script(
 #SBATCH -p grete:shared
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
-#SBATCH -A nim00007
+#SBATCH -A gzz0001
 #SBATCH --constraint=80gb
-source activate {env_name}
+#SBATCH --job-name=finetune-sam
+
+source ~/.bashrc
+micromamba activate {env_name}
 """
 
     python_script = "python ../finetuning.py "
@@ -81,14 +104,19 @@ source activate {env_name}
         python_script += f"--freeze {freeze} "
     if quantize:
         python_script += "--quantize "
+
+    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg']
+    if dataset in medical_datasets:
+        python_script += "--medical_imaging "
+
     # let's add the python script to the bash script
     batch_script += python_script
-    print(batch_script)
     with open(script_name, "w") as f:
         f.write(batch_script)
 
-    cmd = ["sbatch", script_name]
-    subprocess.run(cmd)
+    if not dry:
+        cmd = ["sbatch", script_name]
+        subprocess.run(cmd)
 
 
 def get_batch_script_names(tmp_folder):
@@ -104,51 +132,57 @@ def get_batch_script_names(tmp_folder):
     return batch_script
 
 
-def cpkt_exists(cpkt_name, args):
-    checkpoint_path = os.path.join(args.save_root, "checkpoints", cpkt_name, "best.pt")
+def ckpt_exists(ckpt_name, args):
+    checkpoint_path = os.path.join(args.save_root, "checkpoints", ckpt_name, "best.pt")
     return os.path.exists(checkpoint_path)
 
 
 def run_peft_finetuning(args):
     for dataset, domain in ALL_DATASETS.items():
+        if args.dataset is not None and args.dataset != dataset:
+            continue
+
         gen_model = f"vit_b_{domain}"
         models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
         for model in models:
             # full finetuning
             checkpoint_name = f"{model}/full_ft/{dataset}_sam"
-            if not cpkt_exists(checkpoint_name, args):
+            if not ckpt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="sam",
-                    save_root=args.save_root,
-                    model_type=model,
-                    script_name=script_name,
-                    checkpoint_path=None,
-                    checkpoint_name=checkpoint_name,
-                    dataset=dataset
-                )
-
-            # freeze the encoder
-            checkpoint_name = f"{model}/freeze_encoder/{dataset}_sam"
-            if not cpkt_exists(checkpoint_name, args):
-                script_name = get_batch_script_names("./gpu_jobs")
-                write_batch_script(
-                    env_name="sam",
+                    env_name="super",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
                     checkpoint_path=None,
                     checkpoint_name=checkpoint_name,
                     dataset=dataset,
-                    freeze='image_encoder'
+                    dry=args.dry,
+                )
+
+            # freeze the encoder
+            checkpoint_name = f"{model}/freeze_encoder/{dataset}_sam"
+            if not ckpt_exists(checkpoint_name, args):
+                script_name = get_batch_script_names("./gpu_jobs")
+                write_batch_script(
+                    env_name="super",
+                    save_root=args.save_root,
+                    model_type=model,
+                    script_name=script_name,
+                    checkpoint_path=None,
+                    checkpoint_name=checkpoint_name,
+                    dataset=dataset,
+                    freeze='image_encoder',
+                    dry=args.dry,
                 )
             # peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 script_name = get_batch_script_names("./gpu_jobs")
                 checkpoint_name = f"{model}/{peft_method}/{dataset}_sam"
-                if cpkt_exists(checkpoint_name, args):
+                if ckpt_exists(checkpoint_name, args):
                     continue
+
                 write_batch_script(
                     env_name="peft-sam",
                     save_root=args.save_root,
@@ -158,6 +192,7 @@ def run_peft_finetuning(args):
                     peft_method=_peft_method,
                     checkpoint_name=checkpoint_name,
                     dataset=dataset,
+                    dry=args.dry,
                     **peft_kwargs
                 )
 
@@ -167,20 +202,22 @@ def main(args):
 
 
 if __name__ == "__main__":
-    try:
-        shutil.rmtree("./gpu_jobs")
-    except FileNotFoundError:
-        pass
+    tmp_folder = "./gpu_jobs"
+    if os.path.exists(tmp_folder):
+        shutil.rmtree(tmp_folder)
 
-    # Set up argument parsing
+    # Set up parsing arguments
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-s", "--save_root",
-        type=str,
-        default="/scratch/usr/nimcarot/sam/experiments/peft",
-        help="Path to save checkpoints."
+        "-s", "--save_root", type=str, default="/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/models",
+        help="Path to the directory where the model checkpoints are stored."
     )
+    parser.add_argument(
+        "-d", "--dataset", type=str, default=None,
+        help="Run the experiments for a specific supported biomedical imaging dataset."
+    )
+    parser.add_argument("--dry", action="store_true")
 
     args = parser.parse_args()
     main(args)

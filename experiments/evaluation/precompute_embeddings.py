@@ -3,10 +3,10 @@ import os
 from micro_sam.util import get_sam_model
 from micro_sam.evaluation import precompute_all_embeddings
 
+from peft_sam.util import get_peft_kwargs
+
 from util import get_paths  # comment this and create a custom function with the same name to execute on your data
 from util import get_default_arguments
-
-from peft_sam.util import get_peft_kwargs
 
 
 def main():

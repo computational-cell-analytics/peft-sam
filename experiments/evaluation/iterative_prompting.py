@@ -1,5 +1,6 @@
 import os
 
+from micro_sam.util import get_sam_model
 from micro_sam.evaluation import inference
 from micro_sam.evaluation.evaluation import run_evaluation_for_iterative_prompting
 
@@ -7,7 +8,6 @@ from peft_sam.util import get_peft_kwargs
 
 from util import get_paths  # comment this and create a custom function with the same name to run int. seg. on your data
 from util import get_default_arguments
-from micro_sam.util import get_sam_model
 
 
 def _run_iterative_prompting(dataset_name, exp_folder, predictor, start_with_box_prompt, use_masks):
@@ -51,6 +51,7 @@ def main():
         projection_size=args.projection_size,
         quantize=args.quantize,
     )
+
     # get the predictor to perform inference
     predictor = get_sam_model(model_type=args.model, checkpoint_path=args.checkpoint, peft_kwargs=peft_kwargs)
 
