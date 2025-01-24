@@ -1,7 +1,31 @@
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.colors as mcolors
-from matplotlib.patches import Patch
+import os
+
+dataset_mapping = {
+    "covid_if": "CovidIF",
+    "orgasegment": "OrgaSegment",
+    "gonuclear": "GoNuclear",
+    "hpa": "HPA",
+    "mitolab_glycolytic_muscle": "MitoLab",
+    "platy_cilia": "Platynereis",
+}
+
+
+def get_cellseg1(dataset, model):
+    reverse_mapping = {v: k for k, v in dataset_mapping.items()}
+    dataset = reverse_mapping[dataset]
+    model = model.replace(r"$\mu$-SAM", "vit_b_em_organelles") if dataset in ["mitolab_glycolytic_muscle", "platy_cilia"] else model.replace(r"$\mu$-SAM", "vit_b_lm")
+    model = model.replace("SAM", "vit_b")
+    data_path = f"/scratch/usr/nimcarot/sam/experiments/peft/cellseg1/{model}/{dataset}/results/amg_opt.csv"
+    amg = 0
+    if os.path.exists(data_path):
+        df = pd.read_csv(data_path)
+        amg = df['mSA'].iloc[0] if "mSA" in df.columns else None
+    return amg
 
 
 def create_barplot(df):
@@ -15,19 +39,10 @@ def create_barplot(df):
     df = df.sort_values(by='modality', key=lambda x: x.map(lambda val: custom_order.index(val) if val in custom_order else len(custom_order)))
 
     # Map modality names to more readable ones
-    dataset_mapping = {
-        "covid_if": "CovidIF",
-        "mitolab_glycolytic_muscle": "MitoLab",
-        "platy_cilia": "Platynereis",
-        "orgasegment": "OrgaSegment",
-        "gonuclear": "GoNuclear",
-        "hpa": "HPA",
-        "livecell": "LIVECell",
-    }
     modality_mapping = {
         "vanilla": "Base Model",
         "generalist": "Base Model",
-        "full_ft": "Full Finetuning",
+        "full_ft": "Full Ft",
         "lora": "LoRA",
         "qlora": "QLoRA"
     }
@@ -59,7 +74,8 @@ def create_barplot(df):
     df_melted = df_melted.dropna(subset=["value"])
 
     # Unique datasets and modalities
-    datasets = df_melted["dataset"].unique()
+    # datasets = df_melted["dataset"].unique()
+    datasets = dataset_mapping.values()
 
     # Create subplots for each dataset
     fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 12), constrained_layout=True)
@@ -76,7 +92,6 @@ def create_barplot(df):
 
         for pos, modality in enumerate(modalities):
             modality_data = dataset_data[dataset_data["modality"] == modality]
-
             for benchmark_idx, benchmark in enumerate(metrics):
                 benchmark_data = modality_data[modality_data["benchmark"] == benchmark]
                 SAM_data = benchmark_data[benchmark_data['model'] == 'SAM']
@@ -89,13 +104,15 @@ def create_barplot(df):
                     models = [r'$\mu$-SAM', 'SAM']
 
                 for _, model in enumerate(models):
+                    cellseg1 = get_cellseg1(dataset, model)
                     model_data = benchmark_data[benchmark_data["model"] == model]
                     if not model_data.empty:
                         value = model_data["value"].values[0] if len(model_data["value"].values) > 0 else 0
 
                         hatch = "///" if model == r"$\mu$-SAM" else None  # Add hatch pattern for $\mu$-SAM
-
+                        linestyle = "--" if model == r"$\mu$-SAM" else "-"  # Add linestyle for SAM
                         # Plot non-stacked bar
+                        ax.axhline(y=cellseg1, color='black', linestyle=linestyle, linewidth=1)
                         ax.bar(
                             x_positions[pos] + benchmark_idx * bar_width, # + (j - 0.5) * bar_width,
                             value,
@@ -105,23 +122,27 @@ def create_barplot(df):
                             edgecolor='black',  # Optional: Adds border for better visibility
                         )
 
-        ax.set_title(f"{dataset}")
+        ax.set_title(f"{dataset}", fontsize=15)
         ax.set_xticks([p + 0.7 for p in x_positions])
-        ax.set_xticklabels(modalities, ha='center')
+        ax.set_xticklabels(modalities, ha='center', fontsize=13)
 
-    # Updated legend with hatching
+    # Updated legend with hatching and horizontal lines
     benchmark_legend = [Patch(color=custom_palette[benchmark][0], label=f"{benchmark}") for benchmark in metrics]
     model_legend = [
         Patch(facecolor='white', edgecolor='black', hatch=None, label="SAM"),
         Patch(facecolor='white', edgecolor='black', hatch='///', label=r"$\mu$-SAM"),
     ]
-    handles = benchmark_legend + model_legend
+    line_legend = [
+        Line2D([0], [0], color='black', linestyle='-', label="CellSeg1 - SAM"),
+        Line2D([0], [0], color='black', linestyle='--', label="CellSeg1 - "+r"$\mu$SAM"),
+    ]
+    handles = benchmark_legend + model_legend + line_legend
     fig.legend(
-        handles=handles, loc='lower center', ncol=10, fontsize=10,
+        handles=handles, loc='lower center', ncol=10, fontsize=13,
     )
     fig.tight_layout(rect=[0.04, 0.03, 1, 0.98])  # Adjust space for the legend
 
-    plt.text(x=-24.5, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=12)
+    plt.text(x=-25, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
     plt.savefig("../../results/figures/single_img_training.png", dpi=300)
 
 

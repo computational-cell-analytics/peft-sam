@@ -1,7 +1,16 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-DATASET_MAPPING = {
+MEDICO_DATASET_MAPPING = {
+    "amd_sd": "AMD_SD",
+    "jsrt": "JSRT",
+    "mice_tumseg": "MiceTumSeg",
+    "papila": "Papila",
+    "motum": "Motum",
+    "psfhs": "PSFHS",
+}
+
+MICROSCOPY_DATASET_MAPPING = {
     "covid_if": "CovidIF",
     "orgasegment": "OrgaSegment",
     "gonuclear": "GoNuclear",
@@ -32,33 +41,35 @@ CUSTOM_PALETTE = {
 }
 
 
-def plot_results(df):
-    metrics = ['ais', 'point', 'box', 'ip', 'ib'] 
-    df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
+def plot_results(df, domain):
     df['model'] = df['model'].replace({'vit_b': 'SAM'})
     modality_order = list(MODALITY_MAPPING.keys())
     df = df.sort_values(
         by='modality', key=lambda x: x.map(lambda val: modality_order.index(val) if val in modality_order
                                            else len(modality_order))
     )
-    #df = df.sort_values(
-    #    by='dataset', key=lambda x: x.map(lambda val: dataset_order.index(val) if val in dataset_order
-    #                                      else len(dataset_order))
-    #)
-
     df['modality'] = df['modality'].replace(MODALITY_MAPPING)
-    df['dataset'] = df['dataset'].replace(DATASET_MAPPING)
+    if domain == "microscopy":
+        metrics = ['ais', 'point', 'box', 'ip', 'ib'] 
+        df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
+        df['dataset'] = df['dataset'].replace(MICROSCOPY_DATASET_MAPPING)
+        datasets = MICROSCOPY_DATASET_MAPPING.values()
+        models = ["$\mu$-SAM", "SAM"]
+        model_markers = {
+            r"$\mu$-SAM": "^",
+            "SAM": "x"
+        }
+    elif domain == "medical":
+        metrics = ['point', 'box', 'ip', 'ib'] 
+        df['model'] = df['model'].replace({'vit_b_medical_imaging': 'MedicoSAM'})
+        df['dataset'] = df['dataset'].replace(MEDICO_DATASET_MAPPING)
+        datasets = MEDICO_DATASET_MAPPING.values()
+        model_markers = {
+            "MedicoSAM": "^",
+            "SAM": "x"
+        }
 
-    df = df[df['dataset'] != 'LIVECell']
-
-    # Unique datasets and models
-    datasets = DATASET_MAPPING.values()
     models = df['model'].unique()
-    # Define markers for models
-    model_markers = {
-        r"$\mu$-SAM": "^",
-        "SAM": "x"
-    }
     # Create a plot for each dataset
     fig, axes = plt.subplots(2, 3, figsize=(15, 12), sharex=False, sharey=True)
 
@@ -128,10 +139,15 @@ def plot_results(df):
     fig.legend(
         handles, labels, loc='lower center', ncol=10, fontsize=13, 
     )
-    plt.text(x=-25.5, y=0.8, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
-    plt.savefig('../../results/figures/main_results.png', dpi=300)
+    if domain == "microscopy":
+        plt.text(x=-25.5, y=0.8, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
+    elif domain == "medical":
+        plt.text(x=-25.5, y=0.9, s="Dice Score", rotation=90, fontweight="bold", fontsize=15)
+    plt.savefig(f'../../results/figures/results_{domain}.png', dpi=300)
 
 
 if __name__ == "__main__":
-    df = pd.read_csv('../../results/main_results_new.csv')
-    plot_results(df)
+    df_microscopy = pd.read_csv('../../results/main_results.csv')
+    plot_results(df_microscopy, "microscopy")
+    df_medical = pd.read_csv('../../results/medico_sam.csv')
+    plot_results(df_medical, "medical")
