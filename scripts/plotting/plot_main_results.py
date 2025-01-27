@@ -2,11 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 MEDICO_DATASET_MAPPING = {
-    "amd_sd": "AMD_SD",
+    "amd_sd": "AMD-SD",
     "jsrt": "JSRT",
-    "mice_tumseg": "MiceTumSeg",
+    "mice_tumseg": "Mice TumSeg",
     "papila": "Papila",
-    "motum": "Motum",
+    "motum": "MOTUM",
     "psfhs": "PSFHS",
 }
 
@@ -71,7 +71,7 @@ def plot_results(df, domain):
 
     models = df['model'].unique()
     # Create a plot for each dataset
-    fig, axes = plt.subplots(2, 3, figsize=(15, 12), sharex=False, sharey=True)
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12), sharex=False, sharey=True)
 
     for row, dataset in enumerate(datasets):
         dataset_data = df[df['dataset'] == dataset]
@@ -87,13 +87,14 @@ def plot_results(df, domain):
                     model_data[metric],
                     marker=model_markers[model],
                     label=f"{metric} ({model})",
-                    color=CUSTOM_PALETTE[metric]
+                    color=CUSTOM_PALETTE[metric],
+                    markersize=8
                 )
 
             # Highlight the top 3 PEFT methods for each metric
         for metric in metrics:
             # Find the top 3 methods
-            circle_sizes = {0: 250, 1: 125, 2: 40}
+            circle_sizes = {0: 350, 1: 200, 2: 100}
             top_indices = dataset_data.nlargest(3, metric).index
             for rank, idx in enumerate(top_indices):
                 point_x = dataset_data.loc[idx, 'modality']
@@ -102,7 +103,7 @@ def plot_results(df, domain):
 
                 # Add a circle airound the point
                 ax.scatter(
-                    [point_x], [point_y],
+                    [point_x], [point_y], 
                     s=circle_size, color=CUSTOM_PALETTE[metric], alpha=0.5, linewidth=2
                 )
 
@@ -116,6 +117,7 @@ def plot_results(df, domain):
     # fig.suptitle("Comparison of PEFT methods", fontsize=16, y=0.98)
     fig.subplots_adjust(hspace=0.44)
 
+    metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
     metric_handles = [
         plt.Line2D([0], [0], color=CUSTOM_PALETTE[metric], lw=2) for metric in metrics
     ]
@@ -133,16 +135,16 @@ def plot_results(df, domain):
 
     # Combine legends
     handles = metric_handles + model_handles + ranking_handles
-    labels = metrics + list(models) + ranking_labels
+    labels = metric_names + list(models) + ranking_labels
 
     # Add the legend to the figure
     fig.legend(
-        handles, labels, loc='lower center', ncol=10, fontsize=13, 
+        handles, labels, loc='lower center', ncol=10, fontsize=13,
     )
     if domain == "microscopy":
-        plt.text(x=-25.5, y=0.8, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
+        plt.text(x=-25.5, y=0.7, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
     elif domain == "medical":
-        plt.text(x=-25.5, y=0.9, s="Dice Score", rotation=90, fontweight="bold", fontsize=15)
+        plt.text(x=-25.5, y=1, s="Dice Score", rotation=90, fontweight="bold", fontsize=18)
     plt.savefig(f'../../results/figures/results_{domain}.png', dpi=300)
 
 

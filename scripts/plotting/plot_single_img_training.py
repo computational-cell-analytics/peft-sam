@@ -33,18 +33,22 @@ def create_barplot(df):
     df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
     df['model'] = df['model'].replace({'vit_b': 'SAM'})
 
-    custom_order = ['vanilla', 'generalist', 'full_ft', 'AttentionSurgery', 'adaptformer', 'lora', 'fact', 'ssf', 'BiasSurgery', 'LayerNormSurgery', 'freeze_encoder']
+    custom_order = ['vanilla', 'generalist', 'full_ft', 'AttentionSurgery', 'adaptformer', 'lora', 'fact', 'ssf',
+                    'BiasSurgery', 'LayerNormSurgery', 'freeze_encoder']
 
     # Convert the column to a categorical type with the custom order
-    df = df.sort_values(by='modality', key=lambda x: x.map(lambda val: custom_order.index(val) if val in custom_order else len(custom_order)))
+    df = df.sort_values(by='modality',
+                        key=lambda x: x.map(lambda val: custom_order.index(val)
+                                            if val in custom_order else len(custom_order)))
 
     # Map modality names to more readable ones
     modality_mapping = {
         "vanilla": "Base Model",
         "generalist": "Base Model",
-        "full_ft": "Full Ft",
+        "freeze_encoder": "Freeze Encoder",
         "lora": "LoRA",
-        "qlora": "QLoRA"
+        "qlora": "QLoRA",
+        "full_ft": "Full Ft",
     }
     df['modality'] = df['modality'].replace(modality_mapping)
     df['dataset'] = df['dataset'].replace(dataset_mapping)
@@ -52,14 +56,15 @@ def create_barplot(df):
     df = df[df['dataset'] != 'LIVECell']
     # Custom color palette
     custom_palette = {
-        "ais": "#FF8B94",        # Blue
-        "ip": "#56A4C4",         # Orange
-        "ib": "#82D37E",         # Green
-        "single box": "#FFE278", # Red
-        "single point": "#9C89E2" # Purple
+        "ais": "#FF8B94",          # Blue
+        "ip": "#56A4C4",           # Orange
+        "ib": "#82D37E",           # Green
+        "single box": "#FFE278",   # Red
+        "single point": "#9C89E2"  # Purple
     }
     base_colors = list(custom_palette.values())
-    custom_palette = {benchmark: (base_colors[i], mcolors.to_rgba(base_colors[i], alpha=0.5)) for i, benchmark in enumerate(['ais', 'ip', 'ib', 'single box', 'single point'])}
+    custom_palette = {benchmark: (base_colors[i], mcolors.to_rgba(base_colors[i], alpha=0.5))
+                      for i, benchmark in enumerate(['ais', 'ip', 'ib', 'single box', 'single point'])}
 
     # Metrics to plot
     metrics = ['ais', 'ip', 'ib', 'single box', 'single point']
@@ -84,7 +89,7 @@ def create_barplot(df):
         ax = axes[i]
         dataset_data = df_melted[df_melted["dataset"] == dataset]
 
-        modalities = dataset_data["modality"].unique()
+        modalities = list(modality_mapping.values())[1:]
         group_spacing = 2.5  # Increase this value to add more space between groups
         x_positions = [i * group_spacing for i in range(len(modalities))]
 
@@ -124,6 +129,7 @@ def create_barplot(df):
 
         ax.set_title(f"{dataset}", fontsize=15)
         ax.set_xticks([p + 0.7 for p in x_positions])
+        ax.tick_params(axis='x', rotation=45)
         ax.set_xticklabels(modalities, ha='center', fontsize=13)
 
     # Updated legend with hatching and horizontal lines
@@ -139,10 +145,11 @@ def create_barplot(df):
     handles = benchmark_legend + model_legend + line_legend
     fig.legend(
         handles=handles, loc='lower center', ncol=10, fontsize=13,
+        bbox_to_anchor=(0.53, 0)
     )
     fig.tight_layout(rect=[0.04, 0.03, 1, 0.98])  # Adjust space for the legend
 
-    plt.text(x=-25, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
+    plt.text(x=-31.5, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
     plt.savefig("../../results/figures/single_img_training.png", dpi=300)
 
 
