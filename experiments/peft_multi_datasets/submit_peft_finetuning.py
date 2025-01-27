@@ -56,7 +56,7 @@ def write_batch_script(
     quantize=False,
     dry=False,
 ):
-    assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]
+    assert model_type in ["vit_b", "vit_l", "vit_h", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]
 
     "Writing scripts for finetuning with and without lora on different light and electron microscopy datasets"
 
@@ -66,12 +66,12 @@ def write_batch_script(
 #SBATCH -p grete:shared
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
-#SBATCH -A gzz0001
+#SBATCH -A nim00007
 #SBATCH --constraint=80gb
 #SBATCH --job-name=finetune-sam
 
 source ~/.bashrc
-micromamba activate {env_name}
+mamba activate {env_name}
 """
 
     python_script = "python ../finetuning.py "
@@ -141,16 +141,16 @@ def run_peft_finetuning(args):
     for dataset, domain in ALL_DATASETS.items():
         if args.dataset is not None and args.dataset != dataset:
             continue
-
-        gen_model = f"vit_b_{domain}"
-        models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
+        model_type = args.model
+        gen_model = f"{model_type}_{domain}"
+        models = [model_type] if dataset == "livecell" else [model_type, gen_model]
         for model in models:
             # full finetuning
             checkpoint_name = f"{model}/full_ft/{dataset}_sam"
             if not ckpt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="super",
+                    env_name="sam",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -165,7 +165,7 @@ def run_peft_finetuning(args):
             if not ckpt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="super",
+                    env_name="sam",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -210,13 +210,14 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-s", "--save_root", type=str, default="/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/models",
+        "-s", "--save_root", type=str, default="/scratch/usr/nimcarot/sam/experiments/peft",
         help="Path to the directory where the model checkpoints are stored."
     )
     parser.add_argument(
         "-d", "--dataset", type=str, default=None,
         help="Run the experiments for a specific supported biomedical imaging dataset."
     )
+    parser.add_argument("-m", "--model", type=str, required=True, help="The model type to initialize the predictor")
     parser.add_argument("--dry", action="store_true")
 
     args = parser.parse_args()
