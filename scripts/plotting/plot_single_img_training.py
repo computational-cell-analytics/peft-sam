@@ -18,7 +18,7 @@ dataset_mapping = {
 def get_cellseg1(dataset, model):
     reverse_mapping = {v: k for k, v in dataset_mapping.items()}
     dataset = reverse_mapping[dataset]
-    model = model.replace(r"$\mu$-SAM", "vit_b_em_organelles") if dataset in ["mitolab_glycolytic_muscle", "platy_cilia"] else model.replace(r"$\mu$-SAM", "vit_b_lm")
+    model = model.replace(r"$\mu$SAM", "vit_b_em_organelles") if dataset in ["mitolab_glycolytic_muscle", "platy_cilia"] else model.replace(r"$\mu$SAM", "vit_b_lm")
     model = model.replace("SAM", "vit_b")
     data_path = f"/scratch/usr/nimcarot/sam/experiments/peft/cellseg1/{model}/{dataset}/results/amg_opt.csv"
     amg = 0
@@ -30,7 +30,7 @@ def get_cellseg1(dataset, model):
 
 def create_barplot(df):
     # Combine 'vit_b_lm' and 'vit_b_em_organelles' into 'Generalist'
-    df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
+    df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$SAM', 'vit_b_em_organelles': r'$\mu$SAM'})
     df['model'] = df['model'].replace({'vit_b': 'SAM'})
 
     custom_order = ['vanilla', 'generalist', 'full_ft', 'AttentionSurgery', 'adaptformer', 'lora', 'fact', 'ssf',
@@ -83,14 +83,14 @@ def create_barplot(df):
     datasets = dataset_mapping.values()
 
     # Create subplots for each dataset
-    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 12), constrained_layout=True)
+    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(18, 12), constrained_layout=True)
     axes = axes.flatten()
     for i, dataset in enumerate(datasets):
         ax = axes[i]
         dataset_data = df_melted[df_melted["dataset"] == dataset]
 
         modalities = list(modality_mapping.values())[1:]
-        group_spacing = 2.5  # Increase this value to add more space between groups
+        group_spacing = 2.7  # Increase this value to add more space between groups
         x_positions = [i * group_spacing for i in range(len(modalities))]
 
         bar_width = 0.35  # Width for each model's bar
@@ -136,20 +136,23 @@ def create_barplot(df):
     benchmark_legend = [Patch(color=custom_palette[benchmark][0], label=f"{benchmark}") for benchmark in metrics]
     model_legend = [
         Patch(facecolor='white', edgecolor='black', hatch=None, label="SAM"),
-        Patch(facecolor='white', edgecolor='black', hatch='///', label=r"$\mu$-SAM"),
+        Patch(facecolor='white', edgecolor='black', hatch='///', label=r"$\mu$SAM"),
     ]
     line_legend = [
         Line2D([0], [0], color='black', linestyle='-', label="CellSeg1 - SAM"),
         Line2D([0], [0], color='black', linestyle='--', label="CellSeg1 - "+r"$\mu$SAM"),
     ]
     handles = benchmark_legend + model_legend + line_legend
+    metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+
+    labels = metric_names + ['SAM', r'$\mu$SAM', 'CellSeg1 (SAM)', 'CellSeg1 '+r'($\mu$SAM)']
     fig.legend(
-        handles=handles, loc='lower center', ncol=10, fontsize=13,
+        handles=handles, labels=labels, loc='lower center', ncol=10, fontsize=13,
         bbox_to_anchor=(0.53, 0)
     )
     fig.tight_layout(rect=[0.04, 0.03, 1, 0.98])  # Adjust space for the legend
 
-    plt.text(x=-31.5, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
+    plt.text(x=-32.5, y=0.2, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
     plt.savefig("../../results/figures/single_img_training.png", dpi=300)
 
 

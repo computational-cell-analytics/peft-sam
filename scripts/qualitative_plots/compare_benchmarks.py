@@ -89,6 +89,11 @@ def compare_cellseg1_vs_ais(all_images, all_gt, dataset_name):
         fig, ax = plt.subplots(1, 4, figsize=(30, 20), sharex=True, sharey=True)
         if dataset_name == "mitolab_glycolytic_muscle":
             cellseg1_seg = cv2.resize(cellseg1_seg, (765, 383), interpolation=cv2.INTER_LINEAR_EXACT)
+            # show a crop of the image
+            image = image[50:250, 50:250]
+            ais_base = ais_base[50:250, 50:250]
+            ais_lora = ais_lora[50:250, 50:250]
+            cellseg1_seg = cellseg1_seg[50:250, 50:250]
 
         ax[0].imshow(image, cmap="gray")
         ax[0].axis("off")
