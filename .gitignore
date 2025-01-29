@@ -166,6 +166,8 @@ gpu_jobs/
 slurm*.out
 *.png
 
-# Other stuff from torch-em
+# Other stuff
 checkpoints/
 logs/
+*.svg
+results/
