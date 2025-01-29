@@ -54,25 +54,25 @@ def plot_lora_b(df):
             ax.set_ylabel("Learning Rate")
     axes.flatten()[-1].axis('off')
     axes.flatten()[-2].axis('off')
-    
+
     plt.tight_layout()
     plt.savefig("../../results/figures/lora_2.png", dpi=300)
 
 
 def plot_lora_c(df):
     # Replace model names with more readable labels
-    df['base model'] = df['base model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
+    df['base model'] = df['base model'].replace({'vit_b_lm': r'$\mu$SAM', 'vit_b_em_organelles': r'$\mu$SAM'})
     df['base model'] = df['base model'].replace({'vit_b': 'SAM'})
 
     models = df['base model'].unique()
 
     # Define markers for models
     model_markers = {
-        r"$\mu$-SAM": "*",
+        r"$\mu$SAM": "^",
         "SAM": "x"
     }
     dataset_mapping = {
-        "covid_if": "CovidIF",
+        "covid_if": "Covid-IF",
         "mitolab_glycolytic_muscle": "MitoLab",
         "platy_cilia": "Platynereis",
         "orgasegment": "OrgaSegment",

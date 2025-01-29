@@ -6,7 +6,7 @@ import matplotlib.colors as mcolors
 import os
 
 dataset_mapping = {
-    "covid_if": "CovidIF",
+    "covid_if": "Covid-IF",
     "orgasegment": "OrgaSegment",
     "gonuclear": "GoNuclear",
     "hpa": "HPA",
@@ -67,7 +67,7 @@ def create_barplot(df):
                       for i, benchmark in enumerate(['ais', 'ip', 'ib', 'single box', 'single point'])}
 
     # Metrics to plot
-    metrics = ['ais', 'ip', 'ib', 'single box', 'single point']
+    metrics = ['ais', 'single point', 'ip', 'single box', 'ib']
 
     # Melt the data for grouped barplot
     df_melted = df.melt(
@@ -100,13 +100,13 @@ def create_barplot(df):
             for benchmark_idx, benchmark in enumerate(metrics):
                 benchmark_data = modality_data[modality_data["benchmark"] == benchmark]
                 SAM_data = benchmark_data[benchmark_data['model'] == 'SAM']
-                mu_SAM_data = benchmark_data[benchmark_data['model'] == r'$\mu$-SAM']
+                mu_SAM_data = benchmark_data[benchmark_data['model'] == r'$\mu$SAM']
                 SAM_value = SAM_data['value'].values[0] if not SAM_data.empty else 0
                 mu_SAM_value = mu_SAM_data['value'].values[0] if not mu_SAM_data.empty else 0
                 if SAM_value > mu_SAM_value:
-                    models = ['SAM', r'$\mu$-SAM']
+                    models = ['SAM', r'$\mu$SAM']
                 else:
-                    models = [r'$\mu$-SAM', 'SAM']
+                    models = [r'$\mu$SAM', 'SAM']
 
                 for _, model in enumerate(models):
                     cellseg1 = get_cellseg1(dataset, model)
@@ -114,8 +114,8 @@ def create_barplot(df):
                     if not model_data.empty:
                         value = model_data["value"].values[0] if len(model_data["value"].values) > 0 else 0
 
-                        hatch = "///" if model == r"$\mu$-SAM" else None  # Add hatch pattern for $\mu$-SAM
-                        linestyle = "--" if model == r"$\mu$-SAM" else "-"  # Add linestyle for SAM
+                        hatch = "///" if model == r"$\mu$SAM" else None  # Add hatch pattern for $\mu$-SAM
+                        linestyle = "--" if model == r"$\mu$SAM" else "-"  # Add linestyle for SAM
                         # Plot non-stacked bar
                         ax.axhline(y=cellseg1, color='black', linestyle=linestyle, linewidth=1)
                         ax.bar(
@@ -143,7 +143,7 @@ def create_barplot(df):
         Line2D([0], [0], color='black', linestyle='--', label="CellSeg1 - "+r"$\mu$SAM"),
     ]
     handles = benchmark_legend + model_legend + line_legend
-    metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+    metric_names = ['AIS', 'Point', r'$I_{\mathbfit{P}}$', 'Box', r'$I_{\mathbfit{B}}$']
 
     labels = metric_names + ['SAM', r'$\mu$SAM', 'CellSeg1 (SAM)', 'CellSeg1 '+r'($\mu$SAM)']
     fig.legend(
@@ -152,7 +152,7 @@ def create_barplot(df):
     )
     fig.tight_layout(rect=[0.04, 0.03, 1, 0.98])  # Adjust space for the legend
 
-    plt.text(x=-32.5, y=0.2, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
+    plt.text(x=-33, y=0.45, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
     plt.savefig("../../results/figures/single_img_training.png", dpi=300)
 
 

@@ -6,9 +6,17 @@ import torch
 from glob import glob
 import os
 
+MEDICO_DATASET_MAPPING = {
+    "amd_sd": "AMD-SD",
+    "jsrt": "JSRT",
+    "mice_tumseg": "Mice TumSeg",
+    "papila": "Papila",
+    "motum": "MOTUM",
+    "psfhs": "PSFHS",
+}
 MICROSCOPY_DATASET_MAPPING = {
     "livecell": "LIVECell",
-    "covid_if": "CovidIF",
+    "covid_if": "Covid-IF",
     "orgasegment": "OrgaSegment",
     "gonuclear": "GoNuclear",
     "hpa": "HPA",
@@ -40,6 +48,19 @@ COLORS = [
     "#00BCD4",  # Bright cyan
     "#CDDC39",  # Vibrant lime green
 ]
+
+
+def prepare_medical_data(df_sam, def_medico):
+    # edit the medical imaging training times to the same format as microscopy
+    df_sam['model'] = 'SAM'
+    def_medico['model'] = 'MedicoSAM'
+    df = pd.concat([df_sam, def_medico], axis=0)
+    df = df.rename(columns={'best_train_time': 'train_time', 'peft': 'method'})
+    # removed faulty qlora inference checkpoints
+    df = df[df['dataset'] != 'for_infer']
+    df['method'] = df['method'].apply(lambda x: MODALITY_MAPPING[x])
+    df['dataset'] = df['dataset'].apply(lambda x: MEDICO_DATASET_MAPPING[x])
+    return df
 
 
 def extract_training_times(checkpoint_paths):
@@ -78,8 +99,11 @@ def extract_training_times(checkpoint_paths):
     return pd.DataFrame(data)
 
 
-def barplot(df):
-    models = df['model'].unique()
+def barplot(df, is_medical=False):
+    if is_medical:
+        models = ['SAM', 'MedicoSAM']
+    else:
+        models = ['SAM', r'$\mu$SAM']
     datasets = df['dataset'].unique()
     modality_order = list(MODALITY_MAPPING.values())
     # Create subplots
@@ -111,7 +135,6 @@ def barplot(df):
             labels.extend(ax_labels)
         # Add title and labels
         ax.set_title(f'Training Times for {model}', fontsize=14)
-        ax.set_xlabel('PEFT Method', fontsize=12)
         if i == 0:
             ax.set_ylabel('Training Time (s)', fontsize=12)  # Only show y-label on the first subplot
         ax.tick_params(axis='x', rotation=45)
@@ -126,7 +149,10 @@ def barplot(df):
     )
     # Adjust layout
     fig.tight_layout(rect=[0, 0.05, 1, 0.98])  # Adjust space for the legend
-    plt.savefig('../../results/figures/training_times.png', dpi=300)
+    if is_medical:
+        plt.savefig('../../results/figures/medical_training_times.png', dpi=300)
+    else:
+        plt.savefig('../../results/figures/training_times.png', dpi=300)
 
 
 def main():
@@ -140,6 +166,12 @@ def main():
 
     df = pd.read_csv('../../results/training_times.csv')
     barplot(df)
+
+    medical_sam_df = pd.read_csv('../../results/medical_imaging_peft_best_times_vit_b.csv')
+    medical_medico_sam_df = pd.read_csv('../../results/medical_imaging_peft_best_times_vit_b_medical_imaging.csv')
+
+    medical_df = prepare_medical_data(medical_sam_df, medical_medico_sam_df)
+    barplot(medical_df, is_medical=True)
 
 
 if __name__ == "__main__":

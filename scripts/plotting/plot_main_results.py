@@ -11,7 +11,7 @@ MEDICO_DATASET_MAPPING = {
 }
 
 MICROSCOPY_DATASET_MAPPING = {
-    "covid_if": "CovidIF",
+    "covid_if": "Covid-IF",
     "orgasegment": "OrgaSegment",
     "gonuclear": "GoNuclear",
     "hpa": "HPA",
@@ -51,16 +51,18 @@ def plot_results(df, domain):
     df['modality'] = df['modality'].replace(MODALITY_MAPPING)
     if domain == "microscopy":
         metrics = ['ais', 'point', 'box', 'ip', 'ib'] 
-        df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$-SAM', 'vit_b_em_organelles': r'$\mu$-SAM'})
+        metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+        df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$SAM', 'vit_b_em_organelles': r'$\mu$SAM'})
         df['dataset'] = df['dataset'].replace(MICROSCOPY_DATASET_MAPPING)
         datasets = MICROSCOPY_DATASET_MAPPING.values()
-        models = ["$\mu$-SAM", "SAM"]
+        models = ["$\mu$SAM", "SAM"]
         model_markers = {
-            r"$\mu$-SAM": "^",
+            r"$\mu$SAM": "^",
             "SAM": "x"
         }
     elif domain == "medical":
         metrics = ['point', 'box', 'ip', 'ib'] 
+        metric_names = ['Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
         df['model'] = df['model'].replace({'vit_b_medical_imaging': 'MedicoSAM'})
         df['dataset'] = df['dataset'].replace(MEDICO_DATASET_MAPPING)
         datasets = MEDICO_DATASET_MAPPING.values()
@@ -117,7 +119,6 @@ def plot_results(df, domain):
     # fig.suptitle("Comparison of PEFT methods", fontsize=16, y=0.98)
     fig.subplots_adjust(hspace=0.44)
 
-    metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
     metric_handles = [
         plt.Line2D([0], [0], color=CUSTOM_PALETTE[metric], lw=2) for metric in metrics
     ]
@@ -144,7 +145,7 @@ def plot_results(df, domain):
     if domain == "microscopy":
         plt.text(x=-25.5, y=0.7, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
     elif domain == "medical":
-        plt.text(x=-25.5, y=1, s="Dice Score", rotation=90, fontweight="bold", fontsize=18)
+        plt.text(x=-25.5, y=0.7, s="Dice Similarity Coefficient", rotation=90, fontweight="bold", fontsize=18)
     plt.savefig(f'../../results/figures/results_{domain}.png', dpi=300)
 
 
