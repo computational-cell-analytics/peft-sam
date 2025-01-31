@@ -20,7 +20,7 @@ conda activate peft-sam
 ```
 3. Install the package from source
 ```bash
-git clone https://github.com/yourusername/peft-sam.git
+git clone https://github.com/computational-cell-analytics/peft-sam.git
 cd peft-sam
 pip install -e .
 ```
