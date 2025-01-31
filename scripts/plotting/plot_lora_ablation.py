@@ -43,17 +43,15 @@ def plot_lora_b(df):
     cmap = LinearSegmentedColormap.from_list("custom_cmap", custom_palette)
 
     # Heatmap plotting function
-    fig, axes = plt.subplots(3, 4, figsize=(20, 12))
+    fig, axes = plt.subplots(5, 2, figsize=(10, 17))
     for j, task in enumerate(TASKS.keys()):
         for i, rank in enumerate([1, 32]):
-            ax = axes.flatten()[j * 2 + i]
-            pivot_table = df[df['rank'] == rank].pivot(index="lr", columns="alpha", values=task)
+            ax = axes[j, i]
+            pivot_table = df[df['rank'] == rank].pivot(index="alpha", columns="lr", values=task)
             sns.heatmap(pivot_table, ax=ax, cmap=cmap, cbar_kws={'shrink': 0.75}, annot=True)
             ax.set_title(f"{TASKS[task]} (Rank={rank})", fontsize=10)
-            ax.set_xlabel(r"$\alpha$")
-            ax.set_ylabel("Learning Rate")
-    axes.flatten()[-1].axis('off')
-    axes.flatten()[-2].axis('off')
+            ax.set_ylabel(r"$\alpha$")
+            ax.set_xlabel("Learning Rate")
 
     plt.tight_layout()
     plt.savefig("../../results/figures/lora_2.png", dpi=300)
