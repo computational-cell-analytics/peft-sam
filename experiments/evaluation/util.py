@@ -7,14 +7,14 @@ from torch_em.data import datasets
 from micro_sam.evaluation.livecell import _get_livecell_paths
 
 
-# ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
+ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
 
-if os.path.exists("/media/anwai/ANWAI"):  # for Anwai
-    ROOT = "/media/anwai/ANWAI/data"
-else:
-    ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
+# if os.path.exists("/media/anwai/ANWAI"):  # for Anwai
+#    ROOT = "/media/anwai/ANWAI/data"
+# else:
+#    ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
 
-EXPERIMENT_ROOT = "/scratch/projects/nim00007/sam/experiments/new_models"
+# EXPERIMENT_ROOT = "/scratch/projects/nim00007/sam/experiments/new_models"
 
 FILE_SPECS = {
     "platynereis/cilia": {"val": "platy_cilia_val_*", "test": "platy_cilia_test_*"},
