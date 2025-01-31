@@ -9,7 +9,7 @@
 
 ## Comparing LoRA with Full Finetuning
 On all 5 datasets the SAM model is trained from default and from the micro-sam models using LoRA and full finetuning.  
-Note that all datasets except GuNuclear are trained with early stopping while GoNuclear is trained for 50k iterations.
+Note that all datasets except GoNuclear are trained with early stopping while GoNuclear is trained for 50k iterations.
 
 ### Orgasegment
 

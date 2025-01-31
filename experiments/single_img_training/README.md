@@ -4,7 +4,7 @@ Experiments where training is conducted on a single image for microscopy, explor
 
 ## Finetuning Code
 
-``` python
+```bash
 python single_img_finetuning.py --dataset <DATASET_NAME> --model_type <MODEL_TYPE> --save_root <SAVE_PATH> --input_path <DATA_PATH> --learning_rate <LR> --peft_method <PEFT_METHOD>
 ```
 

@@ -1,24 +1,11 @@
 # Parameter Efficient Finetuning Methods of Segment Anything for Microscopy.
 
-Insights on Memory Engagement:
-- `vit_b`
-    - freeze_encoder: ~33.89 GB
-    - QLoRA: ~48.54 GB
-    - LoRA: ~48.62 GB
-    - FFT: ~49.56 GB
-
-- `vit_h`
-    - freeze_encoder: ~36.05 GB
-    - QLoRA: ~ 65.68 GB
-    - LoRA: ~ 67.14 GB
-    - FFT: ~72.34 GB
-
 ## Contents
 
-- param_search: This includes systematic hyperparameter tuning for LoRA, AdaptFormer, and FACT to optimize performance.
-- peft_multi_datasets: The core set of experiments that benchmark all PEFT methods on microscopy and medical datasets.
-- single_img_training: Experiments where training is conducted on a single image for microscopy, exploring the impact of extremely limited training data.
-- evaluation: This includes all required scripts to run evaluations with a given checkpoint and dataset
+- `param_search`: This includes systematic hyperparameter tuning for LoRA, AdaptFormer, and FACT to optimize performance.
+- `peft_multi_datasets`: The core set of experiments that benchmark all PEFT methods on microscopy and medical datasets.
+- `single_img_training`: Experiments where training is conducted on a single image for microscopy, exploring the impact of extremely limited training data.
+- `evaluation`: This includes all required scripts to run evaluations with a given checkpoint and dataset
 
 ## Finetuning Instructions
 
@@ -50,4 +37,16 @@ For a full list of options, run:
 python finetuning.py --help
 ```
 
+TLDR: Insights on Memory Engagement:
+- `vit_b`
+    - freeze_encoder: ~33.89 GB
+    - QLoRA: ~48.54 GB
+    - LoRA: ~48.62 GB
+    - FFT: ~49.56 GB
+
+- `vit_h`
+    - freeze_encoder: ~36.05 GB
+    - QLoRA: ~ 65.68 GB
+    - LoRA: ~ 67.14 GB
+    - FFT: ~72.34 GB
 

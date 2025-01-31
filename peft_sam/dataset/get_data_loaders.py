@@ -125,7 +125,7 @@ def _fetch_microscopy_loaders(
         )
 
         sampler = MinInstanceSampler(min_num_instances=25)
-        
+
         train_loader = get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
             patch_shape=(512, 512),
@@ -434,7 +434,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         def _get_jsrt_loaders(split):
             # Lung and heart segmentation in X-Ray
-            return datasets.get_jsrt_loader(
+            dataset = datasets.get_jsrt_loader(
                 path=os.path.join(data_root, "jsrt"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(512, 512),
@@ -449,6 +449,18 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 shuffle=True,
                 num_workers=16,
             )
+
+            # Get splits on the fly.
+            val_fraction = 0.2
+            generator = torch.Generator().manual_seed(42)
+            train_ds, val_ds = torch.utils.data.random_split(
+                dataset=dataset, lengths=[1 - val_fraction, val_fraction], generator=generator
+            )
+            if split == "train":
+                return train_ds
+            else:
+                return val_ds
+
         get_loaders = _get_jsrt_loaders
 
     elif dataset_name == "amd_sd":
