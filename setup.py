@@ -13,6 +13,6 @@ setup(
     version=__version__,
     author='Carolin Teuber, Anwai Archit',
     author_email='carolin.teuber@stud.uni-goettingen.de, anwai.archit@uni-goettingen.de',
-    url='https://github.com/computational-cell-analytics/PEFT_SAM',
+    url='https://github.com/computational-cell-analytics/peft-sam',
     packages=['peft_sam'],
 )
