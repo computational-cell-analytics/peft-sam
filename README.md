@@ -1,11 +1,10 @@
 # Parameter Efficient Finetuning of Segment Anything Models
 
-PEFT-SAM is a research project exploring **PEFT (Parameter Efficient Fine-Tuning)** methods for **Segment Anything** (SAM) in the **medical imaging** domain. 
-
+PEFT-SAM is a research project exploring **PEFT (Parameter Efficient Fine-Tuning)** methods for **Segment Anything** (SAM) in the **biomedical imaging** domain. 
 
 ## Installation
 
-To install and run **peft_sam**, follow the steps below.
+To install and run `peft_sam`, follow the steps below.
 
 ### Step 1: Set Up Environment
 
