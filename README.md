@@ -1,26 +1,31 @@
-# Parameter Efficient Finetuning of Segment Anything Models
+# Parameter Efficient Fine-Tuning of Segment Anything Models
 
-PEFT-SAM is a research project exploring **PEFT (Parameter Efficient Fine-Tuning)** methods for **Segment Anything** (SAM) in the **biomedical imaging** domain. 
+`peft-sam` implements several **PEFT (Parameter Efficient Fine-Tuning)** methods for **Segment Anything Models** (SAM) in the **biomedical imaging** domain. 
 
 ## Installation
 
-To install and run `peft_sam`, follow the steps below.
+How to install `peft_sam` python library from source?
 
-### Step 1: Set Up Environment
+We recommend to first setup an environment with the necessary requirements:
 
-We recommend creating a new virtual environment to avoid conflicts with existing packages. To do this, you can use `conda` or `pip` to create the environment.
+- `environment.yaml`: to set up an environment on Linux or Mac OS.
+- `environment_cpu_win.yaml`: to set up an environment on Windows with CPU support.
+- `environment_gpu_win.yaml`: to set up an environment on Windows with GPU support.
+- `environment_qlora.yaml`: to set up an environment on any platform, with GPU support only.
 
-1. **Create a virtual environment:**
-```bash
-conda env create -f environment.yaml
-```
-2. Activate the environment
-```bash
-conda activate peft-sam
-```
-3. Install the package from source
-```bash
-git clone https://github.com/computational-cell-analytics/peft-sam.git
-cd peft-sam
-pip install -e .
-```
+
+To create one of these environments and install `peft_sam` into it follow these steps:
+
+1. Clone the repository: `git clone https://github.com/computational-cell-analytics/`
+2. Enter it: `cd medico-sam`
+3. Create the respective environment: `conda env create -f <ENV_FILE>.yaml`
+4. Activate the environment: `conda activate peft-sam`
+5. Install `peft_sam`: `pip install -e .`
+
+## Citation
+
+If you are using this repository in your research please cite:
+- [our preprint](TODO)
+- and the original [Segment Anything](https://arxiv.org/abs/2304.02643) publication.
+- If you use the microscopy generalist models, please also cite [Segment Anything for Microscopy](https://doi.org/10.1101/2023.08.21.554208) publication.
+- If you use the medical imaging generalist models, please also cite [MedicoSAM](https://doi.org/10.48550/arXiv.2501.11734) publication.
