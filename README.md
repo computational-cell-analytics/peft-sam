@@ -16,8 +16,8 @@ We recommend to first setup an environment with the necessary requirements:
 
 To create one of these environments and install `peft_sam` into it follow these steps:
 
-1. Clone the repository: `git clone https://github.com/computational-cell-analytics/`
-2. Enter it: `cd medico-sam`
+1. Clone the repository: `git clone https://github.com/computational-cell-analytics/peft-sam`
+2. Enter it: `cd peft-sam`
 3. Create the respective environment: `conda env create -f <ENV_FILE>.yaml`
 4. Activate the environment: `conda activate peft-sam`
 5. Install `peft_sam`: `pip install -e .`
