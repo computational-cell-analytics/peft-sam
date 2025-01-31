@@ -9,7 +9,7 @@
 
 ## AdaptFormer
 Run a grid search for AdaptFormer parameters on OrgaSegment
-- $\alpha \in [0.1, 0.25, 0.5, 0.75, 1, '\text{learnable\_scalar}']$
-- $\text{projection\_size} \in [64, 128, 256]$
-- $\text{dropout} \in [0.1, 0.25, 0.5, None]$
+- $\alpha \in [0.1, 0.25, 0.5, 0.75, 1, '\text{learnable scalar}']$
+- projection_size $\in [64, 128, 256]$
+- dropout $\in [0.1, 0.25, 0.5, None]$
 
