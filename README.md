@@ -1,11 +1,10 @@
 # Parameter Efficient Finetuning of Segment Anything Models
 
-PEFT-SAM is a research project exploring **PEFT (Parameter Efficient Fine-Tuning)** methods for **Segment Anything** (SAM) in the **medical imaging** domain. 
-
+PEFT-SAM is a research project exploring **PEFT (Parameter Efficient Fine-Tuning)** methods for **Segment Anything** (SAM) in the **biomedical imaging** domain. 
 
 ## Installation
 
-To install and run **peft_sam**, follow the steps below.
+To install and run `peft_sam`, follow the steps below.
 
 ### Step 1: Set Up Environment
 
@@ -21,7 +20,7 @@ conda activate peft-sam
 ```
 3. Install the package from source
 ```bash
-git clone https://github.com/yourusername/peft-sam.git
+git clone https://github.com/computational-cell-analytics/peft-sam.git
 cd peft-sam
 pip install -e .
 ```
