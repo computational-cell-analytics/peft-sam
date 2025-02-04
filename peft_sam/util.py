@@ -76,25 +76,32 @@ def get_default_peft_kwargs(method: str):
     else:
         if method == "lora":
             peft_kwargs = get_peft_kwargs(peft_rank=32, peft_module=method)
+
         elif method == "qlora":
             peft_kwargs = get_peft_kwargs(peft_rank=32, peft_module="lora", quantize=True)
+
         elif method == "fact":
             peft_kwargs = get_peft_kwargs(peft_rank=16, peft_module=method, dropout=0.1)
+
         elif method == "attention_tuning":
             peft_kwargs = get_peft_kwargs(peft_module="AttentionSurgery")
+
         elif method == "bias_tuning":
             peft_kwargs = get_peft_kwargs(peft_module="BiasSurgery")
+
         elif method == "layernorm_tuning":
             peft_kwargs = get_peft_kwargs(peft_module="LayerNormSurgery")
+
         elif method == "ssf":
             peft_kwargs = get_peft_kwargs(peft_module=method)
+
         elif method == "adaptformer":
-            peft_kwargs = get_peft_kwargs(peft_module=method,
-                                          alpha="learnable_scalar",
-                                          dropout=None,
-                                          projection_size=64)
+            peft_kwargs = get_peft_kwargs(
+                peft_module=method, alpha="learnable_scalar", dropout=None, projection_size=64
+            )
+
         else:
-            raise ValueError(f"Please choose a valid peft method from: {supported_peft_methods}")
+            raise ValueError(f"Please choose a valid peft method from: '{supported_peft_methods}'.")
 
     return peft_kwargs
 
