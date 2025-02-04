@@ -76,6 +76,23 @@ def get_default_peft_kwargs(method: str):
     else:
         if method == "lora":
             peft_kwargs = get_peft_kwargs(peft_rank=32, peft_module=method)
+        elif method == "qlora":
+            peft_kwargs = get_peft_kwargs(peft_rank=32, peft_module="lora", quantize=True)
+        elif method == "fact":
+            peft_kwargs = get_peft_kwargs(peft_rank=16, peft_module=method, dropout=0.1)
+        elif method == "attention_tuning":
+            peft_kwargs = get_peft_kwargs(peft_module="AttentionSurgery")
+        elif method == "bias_tuning":
+            peft_kwargs = get_peft_kwargs(peft_module="BiasSurgery")
+        elif method == "layernorm_tuning":
+            peft_kwargs = get_peft_kwargs(peft_module="LayerNormSurgery")
+        elif method == "ssf":
+            peft_kwargs = get_peft_kwargs(peft_module=method)
+        elif method == "adaptformer":
+            peft_kwargs = get_peft_kwargs(peft_module=method,
+                                          alpha="learnable_scalar",
+                                          dropout=None,
+                                          projection_size=64)
         else:
             raise ValueError(f"Please choose a valid peft method from: {supported_peft_methods}")
 
@@ -83,8 +100,8 @@ def get_default_peft_kwargs(method: str):
 
 
 def get_peft_kwargs(
-    peft_rank: int,
     peft_module: Callable,
+    peft_rank: int = None,
     dropout: Optional[float] = None,
     alpha: Optional[float] = None,
     projection_size: Optional[int] = None,
@@ -107,8 +124,6 @@ def get_peft_kwargs(
         peft_kwargs = None
 
     else:
-        assert peft_rank is not None, "Missing rank for peft finetuning."
-
         if peft_module == 'lora':
             peft_kwargs = {"rank": peft_rank, "peft_module": peft_sam.LoRASurgery, "quantize": quantize}
 
