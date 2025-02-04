@@ -25,7 +25,7 @@ To create one of these environments and install `peft_sam` into it follow these 
 ## Citation
 
 If you are using this repository in your research please cite:
-- [our preprint](TODO)
+- [our preprint](https://doi.org/10.48550/arXiv.2502.00418)
 - and the original [Segment Anything](https://arxiv.org/abs/2304.02643) publication.
 - If you use the microscopy generalist models, please also cite [Segment Anything for Microscopy](https://doi.org/10.1101/2023.08.21.554208) publication.
 - If you use the medical imaging generalist models, please also cite [MedicoSAM](https://doi.org/10.48550/arXiv.2501.11734) publication.
