@@ -5,6 +5,7 @@ dependencies:
     - nifty >=1.2.1
     - imagecodecs
     - magicgui
+    - micro_sam
     - napari >=0.5.0
     - natsort
     - pip
