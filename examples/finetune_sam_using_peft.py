@@ -54,9 +54,9 @@ def finetune_sam(args):
 
     # specify checkpoint path depending on the type of finetuning
     if args.peft_method is None:
-        checkpoint_name = f"{args.model_type}/full_finetuning/orgasegment_sam"
+        checkpoint_name = f"{model_type}/full_finetuning/orgasegment_sam"
     else:
-        checkpoint_name = f"{args.model_type}/{args.peft_method}/orgasegment_sam"
+        checkpoint_name = f"{model_type}/{args.peft_method}/orgasegment_sam"
 
     # all the stuff we need for training
     train_loader, val_loader = get_data_loaders(DATA_ROOT)
