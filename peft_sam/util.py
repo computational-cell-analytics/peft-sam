@@ -1,36 +1,45 @@
 import numpy as np
 from math import ceil, floor
+from typing import Tuple, Callable, Optional
 
 from torch_em.transform.raw import normalize
+
+from micro_sam.models import peft_sam
 
 
 EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/"
 
 
 class RawTrafo:
+    """Transforms the input data.
+
+    Args:
+        desired_shape: The desired patch shape to perform padding transformations.
+        do_padding: Whether to pad the inputs to match the 'desired_shape'.
+        do_rescaling: Whether to normalize the inputs.
+        padding: The choice of padding mode.
+        triplicate_dims: Whether to have the inputs in RGB style, i.e. 3 channels in the last axis.
     """
-    Transforms raw data
-    desired_shape: tuple, shape of the output
-    self.padding: if true pads the image to desired_shape
-    self.do_rescaling: if true rescales the image to [0, 255]
-    self.triplicate_dims: if true triplicates the image to 3 channels, in case some of the datasets
-                             images are RGB and some aren't
-    """
-    def __init__(self, desired_shape=None, do_padding=True, do_rescaling=True, padding="constant",
-                 triplicate_dims=False):
+    def __init__(
+        self,
+        desired_shape: Tuple[int, int],
+        do_padding: bool = True,
+        do_rescaling: bool = True,
+        padding: str = "constant",
+        triplicate_dims: bool = False,
+    ):
         self.desired_shape = desired_shape
         self.padding = padding
         self.do_rescaling = do_rescaling
         self.triplicate_dims = triplicate_dims
         self.do_padding = do_padding
 
-    def __call__(self, raw):
+    def __call__(self, raw: np.ndarray) -> np.ndarray:
         if self.do_rescaling:
             raw = normalize(raw)
             raw = raw * 255
 
         if self.do_padding:
-            assert self.desired_shape is not None
             tmp_ddim = (self.desired_shape[-2] - raw.shape[-2], self.desired_shape[-1] - raw.shape[-1])
             ddim = (tmp_ddim[0] / 2, tmp_ddim[1] / 2)
             raw = np.pad(
@@ -49,35 +58,88 @@ class RawTrafo:
         return raw
 
 
-def get_peft_kwargs(peft_rank, peft_module, dropout=None, alpha=None, projection_size=None, quantize=False):
+def get_default_peft_kwargs(method: str):
+    """Functionaltiy to get the default (best) PEFT arguments.
+
+    Args:
+        method: The name of PEFT method.
+
+    Returns:
+        A dictionary with predefined peft arguments.
+    """
+    supported_peft_methods = [
+        "lora", "qlora", "fact", "attention_tuning", "adaptformer", "bias_tuning", "layernorm_tuning", "ssf"
+    ]
+
+    if method is None:
+        peft_kwargs = {}
+    else:
+        if method == "lora":
+            peft_kwargs = get_peft_kwargs(peft_rank=32, peft_module=method)
+        else:
+            raise ValueError(f"Please choose a valid peft method from: {supported_peft_methods}")
+
+    return peft_kwargs
+
+
+def get_peft_kwargs(
+    peft_rank: int,
+    peft_module: Callable,
+    dropout: Optional[float] = None,
+    alpha: Optional[float] = None,
+    projection_size: Optional[int] = None,
+    quantize: bool = False
+):
+    """Functionality to get the necessary arguments in a dictionary of expected arguments under 'peft_kwargs'.
+
+    Args:
+        peft_rank: The choice of rank for the peft method.
+        peft_module: The desired peft module to run the peft method.
+        dropout: Whether to use dropout for the supported peft method, eg. FacT and AdaptFormer.
+        alpha: Whether to use the scaling parameter in Adaptformer.
+        projection_sie: The choice of projection size in AdaptFormer.
+        quantize: Whether to quantize the base foundation model for QLoRA.
+
+    Returns:
+        A dictionary with all arguments and corresponding values.
+    """
     if peft_module is None:
         peft_kwargs = None
+
     else:
         assert peft_rank is not None, "Missing rank for peft finetuning."
-        from micro_sam.models.peft_sam import LoRASurgery, FacTSurgery
+
         if peft_module == 'lora':
-            module = LoRASurgery
-            peft_kwargs = {"rank": peft_rank, "peft_module": module, "quantize": quantize}
+            peft_kwargs = {"rank": peft_rank, "peft_module": peft_sam.LoRASurgery, "quantize": quantize}
+
         elif peft_module == 'fact':
-            module = FacTSurgery
-            peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout}
+            peft_kwargs = {"rank": peft_rank, "peft_module": peft_sam.FacTSurgery, "dropout": dropout}
+
         elif peft_module == 'adaptformer':
-            from micro_sam.models.peft_sam import AdaptFormer
-            module = AdaptFormer
             if alpha != 'learnable_scalar':
                 alpha = float(alpha)
-            peft_kwargs = {"rank": peft_rank, "peft_module": module, "dropout": dropout, "alpha": alpha,
-                           "projection_size": projection_size}
+
+            peft_kwargs = {
+                "peft_module": peft_sam.AdaptFormer,
+                "dropout": dropout,
+                "alpha": alpha,
+                "projection_size": projection_size,
+            }
+
         elif peft_module == 'AttentionSurgery':
-            from micro_sam.models.peft_sam import AttentionSurgery
-            peft_kwargs = {"rank": 2, "peft_module": AttentionSurgery}
+            peft_kwargs = {"peft_module": peft_sam.AttentionSurgery}
+
         elif peft_module == 'BiasSurgery':
             from micro_sam.models.peft_sam import BiasSurgery
-            peft_kwargs = {"rank": 2, "peft_module": BiasSurgery}
+            peft_kwargs = {"peft_module": BiasSurgery}
+
         elif peft_module == 'LayerNormSurgery':
-            from micro_sam.models.peft_sam import LayerNormSurgery
-            peft_kwargs = {"rank": 2, "peft_module": LayerNormSurgery}
+            peft_kwargs = {"peft_module": peft_sam.LayerNormSurgery}
+
         elif peft_module == 'ssf':
-            from micro_sam.models.peft_sam import SSFSurgery
-            peft_kwargs = {"rank": 2, "peft_module": SSFSurgery}
+            peft_kwargs = {"peft_module": peft_sam.SSFSurgery}
+
+        else:
+            raise ValueError
+
     return peft_kwargs
