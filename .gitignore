@@ -171,3 +171,4 @@ results/
 gpu_jobs/
 slurm*.out
 *.png
+data/

@@ -1,6 +1,6 @@
 # Parameter Efficient Fine-Tuning of Segment Anything Models
 
-`peft-sam` implements several **PEFT (Parameter Efficient Fine-Tuning)** methods for **Segment Anything Models** (SAM) in the **biomedical imaging** domain. 
+`peft-sam` implements several *PEFT (Parameter Efficient Fine-Tuning)* methods for Segment Anything Model (SAM) in the biomedical imaging domain. 
 
 ## Installation
 
