@@ -42,9 +42,9 @@ def finetune_sam(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # training settings:
-    model_type = args.model_type
-    checkpoint_path = None  # override this to start training from a custom checkpoint
-    n_objects_per_batch = 5  # this is the number of objects per batch that will be sampled
+    model_type = "vit_b"  # override this to start training from another model supported by 'micro-sam'.
+    checkpoint_path = None  # override this to start training from a custom checkpoint.
+    n_objects_per_batch = 5  # this is the number of objects per batch that will be sampled.
 
     # whether to freeze the entire image encoder.
     if args.peft_method == "freeze_encoder":
@@ -101,10 +101,6 @@ def finetune_sam(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Finetune Segment Anything for microscopy data.")
-    parser.add_argument(
-        "--model_type", "-m", default="vit_b",
-        help="The model type to use for fine-tuning. Either vit_b, vit_l or vit_h."
-    )
     parser.add_argument(
         "--save_root", "-s", default=None,
         help="Where to save the checkpoint and logs. By default they will be saved where this script is run."
