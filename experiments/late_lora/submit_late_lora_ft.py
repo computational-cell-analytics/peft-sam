@@ -4,7 +4,7 @@ import subprocess
 from datetime import datetime
 import itertools
 
-DATASETS = {"hpa": "lm", "PSFHS": "medical_imaging"}
+DATASETS = {"hpa": "lm", "psfhs": "medical_imaging"}
 
 
 def write_batch_script(
