@@ -646,8 +646,4 @@ def _fetch_medical_loaders(dataset_name, data_root):
         raise ValueError(f"'{dataset_name}' is not a valid medical imaging dataset name.")
 
     train_loader, val_loader = get_loaders("train"), get_loaders("val")
-
-    from torch_em.util.debug import check_loader
-    check_loader(train_loader, 8)
-
     return train_loader, val_loader
