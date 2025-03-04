@@ -7,6 +7,7 @@ import torch
 
 import torch_em
 from torch_em.data import datasets
+from torch_em.data.datasets import util
 from torch_em.data import MinInstanceSampler
 from torch_em.transform.label import PerObjectDistanceTransform
 
@@ -323,7 +324,7 @@ def _fetch_microscopy_loaders(
         )
 
     else:
-        raise ValueError(f"{dataset_name} is not a valid microscopy dataset name.")
+        raise ValueError(f"'{dataset_name}' is not a valid microscopy dataset name.")
 
     return train_loader, val_loader
 
@@ -366,6 +367,18 @@ def _mice_tumseg_label_trafo(labels):
     labels = connected_components(labels).astype(labels.dtype)
     labels = labels.transpose(0, 2, 1)
     return labels
+
+
+# Ensures all labels are unique.
+def _cc_label_trafo(labels):
+    labels = connected_components(labels).astype(labels.dtype)
+    return labels
+
+
+# Normalize inputs
+def _to_8bit(raw):
+    raw = sam_training.util.normalize_to_8bit(raw)
+    return raw
 
 
 def _fetch_medical_loaders(dataset_name, data_root):
@@ -514,10 +527,23 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         # Get one specific split of this data and use that for train-val-test.
         raw_paths, label_paths = datasets.medical.sega.get_sega_paths(
-            path=os.path.join(data_root, "sega"), data_choice="Dongyang", download=True,
+            path=os.path.join(data_root, "sega"), data_choice="Rider", download=True,
         )
-        # Create splits on-the-fly (use the first 10 volumes for train and val).
-        raw_paths, label_paths = raw_paths[:10], label_paths[:10]
+        # Create splits on-the-fly (use the first 12 volumes for train and val).
+        raw_paths, label_paths = raw_paths[:12], label_paths[:12]
+
+        # Get the resize transforms.
+        kwargs, patch_shape = util.update_kwargs_for_resize_trafo(
+            kwargs={
+                "raw_transform": _to_8bit,
+                "transform": _transform_identity,
+                "label_transform": _cc_label_trafo,
+                "sampler": MinInstanceSampler(min_size=25),
+            },
+            patch_shape=(1, 512, 512),
+            resize_inputs=True,
+            resize_kwargs={"patch_shape": (1, 512, 512), "is_rgb": False},
+        )
 
         def _get_sega_loaders(split):
             dataset = torch_em.default_segmentation_dataset(
@@ -525,11 +551,10 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 raw_key="data",
                 label_paths=label_paths,
                 label_key="data",
-                patch_shape=(1, 512, 512),
+                patch_shape=patch_shape,
                 is_seg_dataset=True,
-                raw_transform=sam_training.identity,
-                transform=_transform_identity,
-                sampler=MinInstanceSampler(),
+                n_samples=200,
+                **kwargs
             )
             val_fraction = 0.2
             generator = torch.Generator().manual_seed(42)
@@ -557,9 +582,10 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 split=split,
                 resize_inputs=True,
                 download=True,
-                raw_transform=sam_training.identity,
+                raw_transform=_to_8bit,
                 transform=_transform_identity,
                 sampler=MinInstanceSampler(min_size=50),
+                n_samples=250,
                 shuffle=True,
                 num_workers=16,
             )
@@ -570,11 +596,27 @@ def _fetch_medical_loaders(dataset_name, data_root):
         # Organ segmentation in Laparoscopy.
 
         # Get the image and label paths.
-        raw_paths, label_paths = datasets.dsad.get_dsad_paths(
-            path=os.path.join(data_root, "dsad"), organ=None, download=True,
+        raw_paths, label_paths = [], []
+        for _organ in ["liver", "pancreas", "spleen", "colon"]:
+            _rpaths, _lpaths = datasets.dsad.get_dsad_paths(
+                path=os.path.join(data_root, "dsad"), organ=_organ, download=True,
+            )
+            # Get only the first 250 per organ
+            raw_paths.extend(_rpaths[:250])
+            label_paths.extend(_lpaths[:250])
+
+        # Get the resize transforms.
+        kwargs, patch_shape = util.update_kwargs_for_resize_trafo(
+            kwargs={
+                "raw_transform": sam_training.identity,
+                "transform": _transform_identity,
+                "label_transform": _cc_label_trafo,
+                "sampler": MinInstanceSampler(min_size=25),
+            },
+            patch_shape=(1, 512, 512),
+            resize_inputs=True,
+            resize_kwargs={"patch_shape": (1, 512, 512), "is_rgb": True},
         )
-        # Create splits on-the-fly (use the first 200 images for train and val)
-        raw_paths, label_paths = raw_paths[:200], label_paths[:200]
 
         def _get_dsad_loaders(split):
             dataset = torch_em.default_segmentation_dataset(
@@ -582,12 +624,10 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 raw_key=None,
                 label_paths=label_paths,
                 label_key=None,
-                patch_shape=(1, 512, 512),
+                patch_shape=patch_shape,
                 with_channels=True,
                 is_seg_dataset=False,
-                raw_transform=sam_training.identity,
-                transform=_transform_identity,
-                sampler=MinInstanceSampler(min_size=25),
+                **kwargs
             )
             val_fraction = 0.2
             generator = torch.Generator().manual_seed(42)
@@ -603,7 +643,11 @@ def _fetch_medical_loaders(dataset_name, data_root):
         get_loaders = _get_dsad_loaders
 
     else:
-        raise ValueError(f"{dataset_name} is not a valid medical imaging dataset name.")
+        raise ValueError(f"'{dataset_name}' is not a valid medical imaging dataset name.")
 
     train_loader, val_loader = get_loaders("train"), get_loaders("val")
+
+    from torch_em.util.debug import check_loader
+    check_loader(train_loader, 8)
+
     return train_loader, val_loader
