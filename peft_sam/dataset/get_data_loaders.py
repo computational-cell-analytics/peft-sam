@@ -5,6 +5,7 @@ from skimage.measure import label as connected_components
 
 import torch
 
+import torch_em
 from torch_em.data import datasets
 from torch_em.data import MinInstanceSampler
 from torch_em.transform.label import PerObjectDistanceTransform
@@ -507,6 +508,99 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 num_workers=16,
             )
         get_loaders = _get_mice_tumseg_loaders
+
+    elif dataset_name == "sega":
+        # Aorta segmentation in CT.
+
+        # Get one specific split of this data and use that for train-val-test.
+        raw_paths, label_paths = datasets.medical.sega.get_sega_paths(
+            path=os.path.join(data_root, "sega"), data_choice="Dongyang", download=True,
+        )
+        # Create splits on-the-fly (use the first 10 volumes for train and val).
+        raw_paths, label_paths = raw_paths[:10], label_paths[:10]
+
+        def _get_sega_loaders(split):
+            dataset = torch_em.default_segmentation_dataset(
+                raw_paths=raw_paths,
+                raw_key="data",
+                label_paths=label_paths,
+                label_key="data",
+                patch_shape=(1, 512, 512),
+                is_seg_dataset=True,
+                raw_transform=sam_training.identity,
+                transform=_transform_identity,
+                sampler=MinInstanceSampler(),
+            )
+            val_fraction = 0.2
+            generator = torch.Generator().manual_seed(42)
+            train_ds, val_ds = torch.utils.data.random_split(
+                dataset=dataset, lengths=[1 - val_fraction, val_fraction], generator=generator
+            )
+
+            if split == "train":
+                return torch_em.get_data_loader(train_ds, batch_size=2, shuffle=True, num_workers=16)
+            else:
+                return torch_em.get_data_loader(val_ds, batch_size=1, shuffle=True, num_workers=16)
+
+        get_loaders = _get_sega_loaders
+
+    elif dataset_name == "ircadb":
+        # Liver segmentation in CT.
+
+        def _get_ircadb_loaders(split):
+            return datasets.get_ircadb_loader(
+                path=os.path.join(data_root, "ircadb"),
+                batch_size=2 if split == "train" else 1,
+                patch_shape=(1, 512, 512),
+                ndim=2,
+                label_choice="liver",
+                split=split,
+                resize_inputs=True,
+                download=True,
+                raw_transform=sam_training.identity,
+                transform=_transform_identity,
+                sampler=MinInstanceSampler(min_size=50),
+                shuffle=True,
+                num_workers=16,
+            )
+
+        get_loaders = _get_ircadb_loaders
+
+    elif dataset_name == "dsad":
+        # Organ segmentation in Laparoscopy.
+
+        # Get the image and label paths.
+        raw_paths, label_paths = datasets.dsad.get_dsad_paths(
+            path=os.path.join(data_root, "dsad"), organ=None, download=True,
+        )
+        # Create splits on-the-fly (use the first 200 images for train and val)
+        raw_paths, label_paths = raw_paths[:200], label_paths[:200]
+
+        def _get_dsad_loaders(split):
+            dataset = torch_em.default_segmentation_dataset(
+                raw_paths=raw_paths,
+                raw_key=None,
+                label_paths=label_paths,
+                label_key=None,
+                patch_shape=(1, 512, 512),
+                with_channels=True,
+                is_seg_dataset=False,
+                raw_transform=sam_training.identity,
+                transform=_transform_identity,
+                sampler=MinInstanceSampler(min_size=25),
+            )
+            val_fraction = 0.2
+            generator = torch.Generator().manual_seed(42)
+            train_ds, val_ds = torch.utils.data.random_split(
+                dataset=dataset, lengths=[1 - val_fraction, val_fraction], generator=generator
+            )
+
+            if split == "train":
+                return torch_em.get_data_loader(train_ds, batch_size=2, shuffle=True, num_workers=16)
+            else:
+                return torch_em.get_data_loader(val_ds, batch_size=1, shuffle=True, num_workers=16)
+
+        get_loaders = _get_dsad_loaders
 
     else:
         raise ValueError(f"{dataset_name} is not a valid medical imaging dataset name.")
