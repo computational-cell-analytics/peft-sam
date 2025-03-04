@@ -104,7 +104,7 @@ def main():
         "--peft_method", type=str, default=None, help="The method to use for PEFT.",
         choices=[
             "freeze_encoder", "lora", "qlora", "fact", "attention_tuning",
-            "adaptformer", "bias_tuning", "layernorm_tuning", "ssf"
+            "adaptformer", "bias_tuning", "layernorm_tuning", "ssf", "late_lora",
         ],
     )
     args = parser.parse_args()
