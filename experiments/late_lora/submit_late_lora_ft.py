@@ -114,7 +114,7 @@ def run_late_lora_finetuning(args):
         for method, layers, update_matrix in itertools.product(peft_methods, attention_layers_to_update,
                                                                update_matrices.keys()):
 
-            checkpoint_name = f"{model}/lora/{update_matrix}/start_{layers[0]}/{dataset}_sam/"
+            checkpoint_name = f"{model}/late_lora/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/"
             script_name = get_batch_script_names("./gpu_jobs")
             if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
                 continue
