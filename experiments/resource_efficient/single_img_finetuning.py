@@ -39,7 +39,7 @@ def finetune(args):
 
     # training settings:
     model_type = args.model_type
-    checkpoint_path = None  # override this to start training from a custom checkpoint
+    checkpoint_path = args.checkpoint_path  # override this to start training from a custom checkpoint
     n_objects_per_batch = 5
     freeze_parts = args.freeze  # override this to freeze different parts of the model
     dataset = args.dataset
@@ -86,8 +86,8 @@ def finetune(args):
     optimizer_class = torch.optim.AdamW
 
     peft_kwargs = get_peft_kwargs(
-        args.peft_rank,
         args.peft_method,
+        args.peft_rank,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
@@ -179,6 +179,9 @@ def main():
     )
     parser.add_argument(
         "--n_images", type=int, default=1, help="The number of images used for finetuning."
+    )
+    parser.add_argument(
+        "--checkpoint_path", "-c", type=str, default=None, help="The path to custom checkpoint for training."
     )
     args = parser.parse_args()
     finetune(args)

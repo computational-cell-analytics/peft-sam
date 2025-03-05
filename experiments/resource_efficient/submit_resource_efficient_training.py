@@ -40,7 +40,7 @@ def write_batch_script(
 #SBATCH -c 16
 #SBATCH --mem 64G
 #SBATCH -p grete:shared
-#SBATCH -t 2-00:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
 source activate {env_name}
