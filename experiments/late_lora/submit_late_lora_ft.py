@@ -119,7 +119,7 @@ def run_late_lora_finetuning(args):
             if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
                 continue
             write_batch_script(
-                env_name="sam",
+                env_name="peft-sam",
                 save_root=args.save_root,
                 model_type=model,
                 script_name=script_name,
