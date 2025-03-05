@@ -39,7 +39,7 @@ def write_batch_script(
 #SBATCH --job-name={inference_setup}
 
 source ~/.bashrc
-micromamba activate {env_name}
+mamba activate {env_name}
 """
 
     # python script
