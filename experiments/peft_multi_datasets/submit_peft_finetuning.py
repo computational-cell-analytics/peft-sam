@@ -72,6 +72,7 @@ def write_batch_script(
 #SBATCH -G A100:1
 #SBATCH -A gzz0001
 #SBATCH --constraint=80gb
+#SBATCH -x ggpu212
 #SBATCH --job-name=finetune-sam
 
 source ~/.bashrc
