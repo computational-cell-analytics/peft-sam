@@ -533,16 +533,14 @@ def _fetch_medical_loaders(dataset_name, data_root):
         raw_paths, label_paths = raw_paths[:12], label_paths[:12]
 
         # Get the resize transforms.
+        patch_shape = (1, 512, 512)
         kwargs, patch_shape = util.update_kwargs_for_resize_trafo(
             kwargs={
                 "raw_transform": _to_8bit,
                 "transform": _transform_identity,
                 "label_transform": _cc_label_trafo,
-                "sampler": MinInstanceSampler(min_size=25),
             },
-            patch_shape=(1, 512, 512),
-            resize_inputs=True,
-            resize_kwargs={"patch_shape": (1, 512, 512), "is_rgb": False},
+            patch_shape=patch_shape, resize_inputs=True, resize_kwargs={"patch_shape": patch_shape, "is_rgb": False},
         )
 
         def _get_sega_loaders(split):
@@ -553,9 +551,12 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 label_key="data",
                 patch_shape=patch_shape,
                 is_seg_dataset=True,
+                ndim=2,
                 n_samples=200,
+                sampler=MinInstanceSampler(min_size=25),
                 **kwargs
             )
+            # Split the dataset into train and val.
             val_fraction = 0.2
             generator = torch.Generator().manual_seed(42)
             train_ds, val_ds = torch.utils.data.random_split(
@@ -629,6 +630,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 is_seg_dataset=False,
                 **kwargs
             )
+            # Split the data into training and val.
             val_fraction = 0.2
             generator = torch.Generator().manual_seed(42)
             train_ds, val_ds = torch.utils.data.random_split(
