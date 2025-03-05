@@ -60,6 +60,15 @@ def finetune(args):
     train_rois = SAMPLE_DATA[dataset]['train_rois']
     val_rois = SAMPLE_DATA[dataset]['val_rois']
 
+    n_images = args.n_images
+    if n_images > 1:
+        # Adjust sample ranges for resource efficient finetuning with a range of full images
+        # This is a bit hacky and only works for hpa 
+        # TO DO: Implement a more general solution/for medical imaging
+        assert dataset == 'hpa', "Only hpa dataset supports multiple images for finetuning"
+        train_sample_range = (1, n_images+1)
+        val_sample_range = (1, 4)  # Always use 3 validation images 
+
     train_loader, val_loader = _fetch_microscopy_loaders(
         dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
         train_rois=train_rois, val_rois=val_rois
@@ -167,6 +176,9 @@ def main():
     )
     parser.add_argument(
         "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"
+    )
+    parser.add_argument(
+        "--n_images", type=int, default=1, help="The number of images used for finetuning."
     )
     args = parser.parse_args()
     finetune(args)
