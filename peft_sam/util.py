@@ -1,6 +1,6 @@
 import numpy as np
 from math import ceil, floor
-from typing import Tuple, Callable, Optional
+from typing import Tuple, Callable, Optional, List
 
 from torch_em.transform.raw import normalize
 
@@ -68,7 +68,7 @@ def get_default_peft_kwargs(method: str):
         A dictionary with predefined peft arguments.
     """
     supported_peft_methods = [
-        "lora", "qlora", "fact", "attention_tuning", "adaptformer", "bias_tuning", "layernorm_tuning", "ssf"
+        "lora", "qlora", "fact", "attention_tuning", "adaptformer", "bias_tuning", "layernorm_tuning", "ssf", "late_lora"
     ]
 
     if method is None:
@@ -99,6 +99,13 @@ def get_default_peft_kwargs(method: str):
             peft_kwargs = get_peft_kwargs(
                 peft_module=method, alpha="learnable_scalar", dropout=None, projection_size=64
             )
+        elif method == "late_lora":
+            peft_kwargs = get_peft_kwargs(
+                peft_rank=32,
+                peft_module="lora",
+                attention_layers_to_update=list(range(6, 12)),
+                update_matrices=["q", "k", "v", "mlp"]
+            )
 
         else:
             raise ValueError(f"Please choose a valid peft method from: '{supported_peft_methods}'.")
@@ -112,7 +119,9 @@ def get_peft_kwargs(
     dropout: Optional[float] = None,
     alpha: Optional[float] = None,
     projection_size: Optional[int] = None,
-    quantize: bool = False
+    quantize: bool = False,
+    attention_layers_to_update: List[str] = [],
+    update_matrices: List[str] = ["q", "v"],
 ):
     """Functionality to get the necessary arguments in a dictionary of expected arguments under 'peft_kwargs'.
 
@@ -132,7 +141,13 @@ def get_peft_kwargs(
 
     else:
         if peft_module == 'lora':
-            peft_kwargs = {"rank": peft_rank, "peft_module": peft_sam.LoRASurgery, "quantize": quantize}
+            peft_kwargs = {
+                "rank": peft_rank,
+                "peft_module": peft_sam.LoRASurgery,
+                "quantize": quantize,
+                "attention_layers_to_update": attention_layers_to_update,
+                "update_matrices": update_matrices,
+            }
 
         elif peft_module == 'fact':
             peft_kwargs = {"rank": peft_rank, "peft_module": peft_sam.FacTSurgery, "dropout": dropout}
@@ -150,6 +165,12 @@ def get_peft_kwargs(
 
         elif peft_module == 'AttentionSurgery':
             peft_kwargs = {"peft_module": peft_sam.AttentionSurgery}
+ 
+        elif peft_module == 'ClassicalSurgery':
+            peft_kwargs = {
+                "peft_module": peft_sam.ClassicalSurgery,
+                "attention_layers_to_update": attention_layers_to_update
+        }
 
         elif peft_module == 'BiasSurgery':
             from micro_sam.models.peft_sam import BiasSurgery
