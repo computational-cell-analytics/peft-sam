@@ -41,8 +41,8 @@ def finetune_sam(args):
     optimizer_class = torch.optim.AdamW
 
     peft_kwargs = get_peft_kwargs(
-        args.peft_rank,
-        args.peft_method,
+        peft_rank=args.peft_rank,
+        peft_module=args.peft_method,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
@@ -112,7 +112,7 @@ def main():
         "--dataset", "-d", type=str, required=True, help="The dataset to use for training."
     )
     parser.add_argument(
-        "--input_path", "-i", type=str, default="/scratch/usr/nimcarot/data",
+        "--input_path", "-i", type=str, default="/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data",
         help="Specifies the path to the data directory (set to ./data if dataset is at ./data/<dataset_name>)"
     )
     parser.add_argument(
