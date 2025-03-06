@@ -8,6 +8,9 @@ MEDICO_DATASET_MAPPING = {
     "papila": "Papila",
     "motum": "MOTUM",
     "psfhs": "PSFHS",
+    "sega": "SegA",
+    "dsad": "DSAD",
+    "ircadb": "IRCADb"
 }
 
 MICROSCOPY_DATASET_MAPPING = {
@@ -18,6 +21,7 @@ MICROSCOPY_DATASET_MAPPING = {
     "mitolab_glycolytic_muscle": "MitoLab",
     "platy_cilia": "Platynereis",
 }
+
 MODALITY_MAPPING = {
     "vanilla": "Base Model",
     "generalist": "Base Model",
@@ -32,6 +36,7 @@ MODALITY_MAPPING = {
     "AttentionSurgery": "Attn Tune",
     "full_ft": "Full Ft",
 }
+
 CUSTOM_PALETTE = {
     "ais": "#FF8B94",
     "point": "#9C89E2",

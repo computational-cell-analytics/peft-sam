@@ -23,6 +23,9 @@ ALL_DATASETS = {
     'jsrt': 'medical_imaging',
     'amd_sd': 'medical_imaging',
     'mice_tumseg': 'medical_imaging',
+    'sega': 'medical_imaging',
+    'dsad': 'medical_imaging',
+    'ircadb': 'medical_imaging',
 }
 
 # Dictionary with all peft methods and their peft kwargs
@@ -56,7 +59,8 @@ def write_batch_script(
     quantize=False,
     dry=False,
 ):
-    assert model_type in ["vit_b", "vit_l", "vit_h", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]
+    if model_type not in ["vit_b", "vit_l", "vit_h", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]:
+        raise ValueError(model_type)
 
     "Writing scripts for finetuning with and without lora on different light and electron microscopy datasets"
 
@@ -66,12 +70,13 @@ def write_batch_script(
 #SBATCH -p grete:shared
 #SBATCH -t 2-00:00:00
 #SBATCH -G A100:1
-#SBATCH -A nim00007
+#SBATCH -A gzz0001
 #SBATCH --constraint=80gb
+#SBATCH -x ggpu212
 #SBATCH --job-name=finetune-sam
 
 source ~/.bashrc
-mamba activate {env_name}
+micromamba activate {env_name}
 """
 
     python_script = "python ../finetuning.py "
@@ -105,7 +110,7 @@ mamba activate {env_name}
     if quantize:
         python_script += "--quantize "
 
-    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg']
+    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg', 'sega', 'ircadb', 'dsad']
     if dataset in medical_datasets:
         python_script += "--medical_imaging "
 
@@ -141,6 +146,7 @@ def run_peft_finetuning(args):
     for dataset, domain in ALL_DATASETS.items():
         if args.dataset is not None and args.dataset != dataset:
             continue
+
         model_type = args.model
         gen_model = f"{model_type}_{domain}"
         models = [model_type] if dataset == "livecell" else [model_type, gen_model]
@@ -150,7 +156,7 @@ def run_peft_finetuning(args):
             if not ckpt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="sam",
+                    env_name="super",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -165,7 +171,7 @@ def run_peft_finetuning(args):
             if not ckpt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="sam",
+                    env_name="super",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -184,7 +190,7 @@ def run_peft_finetuning(args):
                     continue
 
                 write_batch_script(
-                    env_name="peft-sam",
+                    env_name="peft-sam" if peft_method == "qlora" else "super",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -210,7 +216,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-s", "--save_root", type=str, default="/scratch/usr/nimcarot/sam/experiments/peft",
+        "-s", "--save_root", type=str, default="/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/models",
         help="Path to the directory where the model checkpoints are stored."
     )
     parser.add_argument(

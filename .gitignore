@@ -172,3 +172,5 @@ gpu_jobs/
 slurm*.out
 *.png
 data/
+chosen_data*
+*.zip
