@@ -1,5 +1,6 @@
 import os
 import argparse
+from pathlib import Path
 
 import torch
 
@@ -69,6 +70,7 @@ def finetune_sam(args):
         optimizer_class=optimizer_class,
         peft_kwargs=peft_kwargs,
         with_segmentation_decoder=(not args.medical_imaging),
+        overwrite_training=False,
     )
 
     if args.export_path is not None:
@@ -86,6 +88,8 @@ def finetune_sam(args):
         save_path = os.path.join(
             "" if args.save_root is None else args.save_root, "checkpoints", checkpoint_name, "for_inference", "best.pt"
         )
+        os.makedirs(Path(save_path).parent, exist_ok=True)
+
         export_custom_qlora_model(
             checkpoint_path=None,  # i.e. use the weights of "model_type" chosen model.
             finetuned_path=checkpoint_path,  # filepath to the custom finetuned model.
