@@ -2,3 +2,9 @@ from .hpa import *
 from .livecell import *
 from .gonuclear import *
 from .orgasegment import *
+from .psfhs import *
+from .papila import *
+from .motum import *
+from .jsrt import *
+from .amd_sd import *
+from .mice_tumseg import *

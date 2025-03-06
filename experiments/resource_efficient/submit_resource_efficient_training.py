@@ -32,7 +32,7 @@ def write_batch_script(
     n_images=1,
     dry=False
 ):
-    assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles"]
+    assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]
 
     "Writing scripts for finetuning with and without lora on different light and electron microscopy datasets"
 
@@ -77,6 +77,10 @@ source activate {env_name}
         python_script += f"--freeze {freeze} "
     if quantize:
         python_script += "--quantize "
+
+    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg']
+    if dataset in medical_datasets:
+        python_script += "--medical_imaging "
     # let's add the python script to the bash script
     batch_script += python_script
     print(batch_script)
@@ -175,7 +179,7 @@ def main(args):
         run_peft_finetuning(args, ALL_DATASETS, n_images=1)
     elif args.data_scaling:
         n_images = [1, 2, 5, 10]
-        datasets = {"hpa": "lm"}
+        datasets = {"hpa": "lm", "psfhs": "medical_imaging"}
         for n in n_images:
             run_peft_finetuning(args, datasets, n_images=n)
 

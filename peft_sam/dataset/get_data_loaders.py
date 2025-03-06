@@ -15,7 +15,8 @@ from micro_sam.training.util import ResizeLabelTrafo
 from ..util import RawTrafo
 
 from . import (
-    get_hpa_segmentation_loader, get_livecell_loader, get_gonuclear_loader, get_orgasegment_loader
+    get_hpa_segmentation_loader, get_livecell_loader, get_gonuclear_loader, get_orgasegment_loader,
+    get_psfhs_loader, get_papila_loader, get_motum_loader, get_jsrt_loader, get_amd_sd_loader, get_mice_tumseg_loader,
 )
 
 
@@ -28,7 +29,7 @@ def _fetch_microscopy_loaders(
     val_rois=None,
     n_train_samples=None,
     n_val_samples=None,
-    batch_size=2
+    batch_size=2,
 ):
 
     if dataset_name == "covid_if":
@@ -367,13 +368,23 @@ def _mice_tumseg_label_trafo(labels):
     return labels
 
 
-def _fetch_medical_loaders(dataset_name, data_root):
+def _fetch_medical_loaders(
+        dataset_name,
+        data_root,
+        train_sample_range=None,
+        val_sample_range=None,
+        train_rois=None,
+        val_rois=None,
+        n_train_samples=None,
+        n_val_samples=None,
+        batch_size=2,
+):
 
     if dataset_name == "papila":
 
         def _get_papila_loaders(split):
             # Optic disc in fundus.
-            return datasets.get_papila_loader(
+            return get_papila_loader(
                 path=os.path.join(data_root, "papila"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
@@ -386,6 +397,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                sample_range=train_sample_range if split == "train" else val_sample_range
             )
         get_loaders = _get_papila_loaders
 
@@ -393,7 +405,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         def _get_motum_loaders(split):
             # Tumor segmentation in MRI.
-            return datasets.get_motum_loader(
+            return get_motum_loader(
                 path=os.path.join(data_root, "motum"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
@@ -408,6 +420,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                sample_range=train_sample_range if split == "train" else val_sample_range
             )
         get_loaders = _get_motum_loaders
 
@@ -415,7 +428,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         def _get_psfhs_loaders(split):
             # Pubic symphysis and fetal head in US.
-            return datasets.get_psfhs_loader(
+            return get_psfhs_loader(
                 path=os.path.join(data_root, "psfhs"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
@@ -427,6 +440,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                sample_range=train_sample_range if split == "train" else val_sample_range
             )
         get_loaders = _get_psfhs_loaders
 
@@ -434,7 +448,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         def _get_jsrt_loaders(split):
             # Lung and heart segmentation in X-Ray
-            dataset = datasets.get_jsrt_loader(
+            dataset = get_jsrt_loader(
                 path=os.path.join(data_root, "jsrt"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(512, 512),
@@ -448,6 +462,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                sample_range=train_sample_range if split == "train" else val_sample_range
             )
 
             # Get splits on the fly.
@@ -467,7 +482,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         def _get_amd_sd_loaders(split):
             # Lesion segmentation in OCT.
-            loader = datasets.get_amd_sd_loader(
+            loader = get_amd_sd_loader(
                 path=os.path.join(data_root, "amd_sd"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
@@ -480,6 +495,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                sample_range=train_sample_range if split == "train" else val_sample_range
             )
             loader.dataset.max_sampling_attempts = 10000
             return loader
@@ -490,7 +506,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         def _get_mice_tumseg_loaders(split):
             # Tumor segmentation in microCT.
-            return datasets.get_mice_tumseg_loader(
+            return get_mice_tumseg_loader(
                 path=os.path.join(data_root, "mice_tumseg"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
@@ -505,11 +521,12 @@ def _fetch_medical_loaders(dataset_name, data_root):
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                sample_range=train_sample_range if split == "train" else val_sample_range
             )
         get_loaders = _get_mice_tumseg_loaders
 
     else:
         raise ValueError(f"{dataset_name} is not a valid medical imaging dataset name.")
-
+ 
     train_loader, val_loader = get_loaders("train"), get_loaders("val")
     return train_loader, val_loader
