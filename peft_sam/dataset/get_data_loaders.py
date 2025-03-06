@@ -448,7 +448,7 @@ def _fetch_medical_loaders(dataset_name, data_root):
 
         def _get_jsrt_loaders(split):
             # Lung and heart segmentation in X-Ray
-            dataset = datasets.get_jsrt_loader(
+            dataset = datasets.get_jsrt_dataset(
                 path=os.path.join(data_root, "jsrt"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(512, 512),
@@ -470,10 +470,11 @@ def _fetch_medical_loaders(dataset_name, data_root):
             train_ds, val_ds = torch.utils.data.random_split(
                 dataset=dataset, lengths=[1 - val_fraction, val_fraction], generator=generator
             )
+
             if split == "train":
-                return train_ds
+                return torch_em.get_data_loader(train_ds, batch_size=2, shuffle=True, num_workers=16)
             else:
-                return val_ds
+                return torch_em.get_data_loader(val_ds, batch_size=1, shuffle=True, num_workers=16)
 
         get_loaders = _get_jsrt_loaders
 
