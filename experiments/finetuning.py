@@ -81,10 +81,16 @@ def finetune_sam(args):
 
     if args.quantize:
         checkpoint_path = os.path.join(
+            "" if args.save_root is None else args.save_root, "checkpoints", checkpoint_name, "best.pt"
+        )
+        save_path = os.path.join(
             "" if args.save_root is None else args.save_root, "checkpoints", checkpoint_name, "for_inference", "best.pt"
         )
         export_custom_qlora_model(
-            checkpoint_path=checkpoint_path, model_type=model_type, save_path=args.checkpoint_path,
+            checkpoint_path=None,  # i.e. use the weights of "model_type" chosen model.
+            finetuned_path=checkpoint_path,  # filepath to the custom finetuned model.
+            model_type=model_type,
+            save_path=save_path,  # filepath where the desired qlora model will be exported.
         )
 
 
