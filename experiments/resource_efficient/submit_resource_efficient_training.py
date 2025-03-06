@@ -150,12 +150,12 @@ def run_peft_finetuning(args, datasets, n_images=1):
             for peft_method, peft_kwargs in PEFT_METHODS.items():
                 # for now: run only for lora
                 script_name = get_batch_script_names("./gpu_jobs")
-                checkpoint_name = f"{model}/{peft_method}/{dataset}_sam"
+                checkpoint_name = f"{model}/{peft_method}/{n_images}/{dataset}_sam"
                 _peft_method = "lora" if peft_method == "qlora" else peft_method
                 if cpkt_exists(checkpoint_name, args):
                     continue
                 write_batch_script(
-                    env_name="peft-sam",
+                    env_name="peft-sam-qlora",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -178,6 +178,7 @@ def main(args):
         datasets = {"hpa": "lm"}
         for n in n_images:
             run_peft_finetuning(args, datasets, n_images=n)
+
 
 if __name__ == "__main__":
     try:
