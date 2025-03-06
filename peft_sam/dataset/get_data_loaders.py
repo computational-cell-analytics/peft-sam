@@ -19,6 +19,7 @@ from ..util import RawTrafo
 from . import (
     get_hpa_segmentation_loader, get_livecell_loader, get_gonuclear_loader, get_orgasegment_loader,
     get_psfhs_loader, get_papila_loader, get_motum_loader, get_jsrt_loader, get_amd_sd_loader, get_mice_tumseg_loader,
+    get_sega_paths, get_ircadb_loader, get_dsad_paths
 )
 
 
@@ -411,6 +412,7 @@ def _fetch_medical_loaders(
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                n_samples=200,
                 sample_range=train_sample_range if split == "train" else val_sample_range
             )
         get_loaders = _get_papila_loaders
@@ -454,6 +456,7 @@ def _fetch_medical_loaders(
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                n_samples=200,
                 sample_range=train_sample_range if split == "train" else val_sample_range
             )
         get_loaders = _get_psfhs_loaders
@@ -476,6 +479,7 @@ def _fetch_medical_loaders(
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                n_samples=200,
                 sample_range=train_sample_range if split == "train" else val_sample_range
             )
 
@@ -510,6 +514,7 @@ def _fetch_medical_loaders(
                 download=True,
                 shuffle=True,
                 num_workers=16,
+                n_samples=200,
                 sample_range=train_sample_range if split == "train" else val_sample_range
             )
             loader.dataset.max_sampling_attempts = 10000
@@ -544,8 +549,9 @@ def _fetch_medical_loaders(
         # Aorta segmentation in CT.
 
         # Get one specific split of this data and use that for train-val-test.
-        raw_paths, label_paths = datasets.medical.sega.get_sega_paths(
+        raw_paths, label_paths = get_sega_paths(
             path=os.path.join(data_root, "sega"), data_choice="Rider", download=True,
+            sample_range=train_sample_range
         )
         # Create splits on-the-fly (use the first 12 volumes for train and val).
         raw_paths, label_paths = raw_paths[:12], label_paths[:12]
@@ -592,7 +598,7 @@ def _fetch_medical_loaders(
         # Liver segmentation in CT.
 
         def _get_ircadb_loaders(split):
-            return datasets.get_ircadb_loader(
+            return get_ircadb_loader(
                 path=os.path.join(data_root, "ircadb"),
                 batch_size=2 if split == "train" else 1,
                 patch_shape=(1, 512, 512),
@@ -607,6 +613,7 @@ def _fetch_medical_loaders(
                 n_samples=250,
                 shuffle=True,
                 num_workers=16,
+                sample_range=train_sample_range if split == "train" else val_sample_range
             )
 
         get_loaders = _get_ircadb_loaders
@@ -616,9 +623,12 @@ def _fetch_medical_loaders(
 
         # Get the image and label paths.
         raw_paths, label_paths = [], []
-        for _organ in ["liver", "pancreas", "spleen", "colon"]:
-            _rpaths, _lpaths = datasets.dsad.get_dsad_paths(
+        for i, _organ in enumerate(["liver", "pancreas", "spleen", "colon"]):
+            if train_sample_range[1] - train_sample_range[0] <= i:
+                continue
+            _rpaths, _lpaths = get_dsad_paths(
                 path=os.path.join(data_root, "dsad"), organ=_organ, download=True,
+                sample_range=train_sample_range
             )
             # Get only the first 250 per organ
             raw_paths.extend(_rpaths[:250])

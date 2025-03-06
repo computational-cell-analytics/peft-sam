@@ -8,3 +8,6 @@ from .motum import *
 from .jsrt import *
 from .amd_sd import *
 from .mice_tumseg import *
+from .sega import *
+from .ircadb import *
+from .dsad import *
