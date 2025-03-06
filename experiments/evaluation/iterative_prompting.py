@@ -44,8 +44,8 @@ def main():
     start_with_box_prompt = args.box  # overwrite to start first iters' prompt with box instead of single point
 
     peft_kwargs = get_peft_kwargs(
-        args.peft_rank,
-        args.peft_module,
+        peft_rank=args.peft_rank,
+        peft_module=args.peft_module,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
