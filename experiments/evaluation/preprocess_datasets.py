@@ -183,6 +183,18 @@ def _process_mice_tumseg_data(data_path, view):
     _store_images("mice-tumorseg", os.path.join(data_path, "mice_tumseg"), loader, view)
 
 
+def _process_sega(data_path, view):
+    ...
+
+
+def _process_ircadb(data_path, view):
+    ...
+
+
+def _process_dsad(data_path, view):
+    ...
+
+
 def main(args):
     data_path = args.input_path
     view = args.view
@@ -192,12 +204,17 @@ def main(args):
     # from util import download_all_datasets
     # download_all_datasets(path=args.input_path, for_microscopy=False)
 
-    _process_papila_data(data_path, view)
-    _process_motum_data(data_path, view)
-    _process_psfhs_data(data_path, view)
-    _process_jsrt_data(data_path, view)
-    _process_amd_sd_data(data_path, view)
-    _process_mice_tumseg_data(data_path, view)
+    # _process_papila_data(data_path, view)
+    # _process_motum_data(data_path, view)
+    # _process_psfhs_data(data_path, view)
+    # _process_jsrt_data(data_path, view)
+    # _process_amd_sd_data(data_path, view)
+    # _process_mice_tumseg_data(data_path, view)
+
+    # NEW DATASETS
+    _process_sega(data_path, view)
+    # _process_ircadb(data_path, view)
+    # _process_dsad(data_path, view)
 
 
 if __name__ == "__main__":

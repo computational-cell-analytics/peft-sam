@@ -143,6 +143,7 @@ def run_peft_evaluations(args):
 
     for dataset, domain in ALL_DATASETS.items():
         if args.dataset is not None and args.dataset != dataset:
+            print(f"The chosen dataset is not supported atm: '{args.dataset}'")
             continue
 
         preprocess_data(dataset)
@@ -202,9 +203,12 @@ def run_peft_evaluations(args):
                 checkpoint = f"{experiment_folder}/checkpoints/{model}/{peft_method}/{dataset}_sam/best.pt"
                 if peft_method == "qlora":
                     inference_checkpoint = f"{experiment_folder}/checkpoints/{model}/lora/{dataset}_sam/for_inference/best.pt"  # noqa
-                    os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
-                    export_custom_qlora_model(None, checkpoint, model, inference_checkpoint)
-                    checkpoint = inference_checkpoint
+                    if not os.path.exists(inference_checkpoint):
+                        os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
+                        export_custom_qlora_model(None, checkpoint, model, inference_checkpoint)
+                        checkpoint = inference_checkpoint
+                    else:
+                        checkpoint = inference_checkpoint
 
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
                 result_path = os.path.join(experiment_folder, peft_method, model, dataset)
