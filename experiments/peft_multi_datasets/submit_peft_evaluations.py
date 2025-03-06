@@ -2,7 +2,9 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
+
 from peft_sam.dataset.preprocess_datasets import preprocess_data
+
 from micro_sam.util import export_custom_qlora_model
 
 from submit_peft_finetuning import ALL_DATASETS
@@ -143,7 +145,6 @@ def run_peft_evaluations(args):
 
     for dataset, domain in ALL_DATASETS.items():
         if args.dataset is not None and args.dataset != dataset:
-            print(f"The chosen dataset is not supported atm: '{args.dataset}'")
             continue
 
         preprocess_data(dataset)
