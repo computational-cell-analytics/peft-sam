@@ -258,13 +258,10 @@ def _process_dsad(data_path, view):
         )
 
         # We need to do this step randomly, i.e. randomly pick 50 images
-        # First, exclude the train set.
-        _rpaths, _lpaths = _rpaths[250:], _lpaths[250:]
+        _rpaths, _lpaths = _rpaths[250:], _lpaths[250:]  # first, exclude the train set.
+        idxx = random.sample(range(len(_rpaths)), 25)  # choose the random indices first
 
-        # Choose the random indices first
-        idxx = random.sample(range(len(_rpaths)), 50)
-
-        # Now we know the indices. Sample those images and corresponding labels.
+        # Now we know the indices, Sample those images and corresponding labels.
         _rpaths = [_rpaths[i] for i in idxx]
         _lpaths = [_lpaths[i] for i in idxx]
 
