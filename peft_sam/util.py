@@ -136,9 +136,10 @@ def get_peft_kwargs(
     Returns:
         A dictionary with all arguments and corresponding values.
     """
+    if update_matrices is None:
+        update_matrices = ["q", "v"]
     if peft_module is None:
         peft_kwargs = None
-
     else:
         if peft_module == 'lora':
             peft_kwargs = {
@@ -165,7 +166,7 @@ def get_peft_kwargs(
 
         elif peft_module == 'AttentionSurgery':
             peft_kwargs = {"peft_module": peft_sam.AttentionSurgery}
- 
+
         elif peft_module == 'ClassicalSurgery':
             peft_kwargs = {
                 "peft_module": peft_sam.ClassicalSurgery,

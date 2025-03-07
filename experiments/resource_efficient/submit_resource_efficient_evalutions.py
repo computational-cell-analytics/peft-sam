@@ -3,7 +3,6 @@ import shutil
 import subprocess
 from datetime import datetime
 from micro_sam.util import export_custom_qlora_model
-from peft_sam.dataset.preprocess_datasets import preprocess_data
 
 # ALL_DATASETS = {
 #    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
@@ -132,7 +131,6 @@ def run_peft_evaluations(args, datasets, n_images):
     tmp_folder = "./gpu_jobs"
 
     for dataset, domain in datasets.items():
-        preprocess_data(dataset)
         gen_model = f"vit_b_{domain}"
         models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
         if domain == "medical_imaging":
@@ -161,7 +159,7 @@ def run_peft_evaluations(args, datasets, n_images):
             # full finetuning
             checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/full_ft/{n_images}_imgs/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, model, "full_ft", f"{n_images}_imgs", dataset)
+            result_path = os.path.join(EXPERIMENT_ROOT, "full_ft", model, f"{n_images}_imgs", dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
                 for current_setup in SCRIPTS:
@@ -178,7 +176,7 @@ def run_peft_evaluations(args, datasets, n_images):
             # freeze the encoder
             checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/freeze_encoder/{n_images}_imgs/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, model, "freeze_encoder", f"{n_images}_imgs", dataset)
+            result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", model, f"{n_images}_imgs", dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
                 for current_setup in SCRIPTS:
@@ -220,7 +218,8 @@ def run_peft_evaluations(args, datasets, n_images):
                         experiment_folder=result_path,
                         dataset=dataset,
                         peft_method=_peft_method,
-                        **peft_kwargs
+                        **peft_kwargs,
+                        dry=args.dry
                     )
 
 
