@@ -2,15 +2,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 MEDICO_DATASET_MAPPING = {
-    # "amd_sd": "AMD-SD",
-    # "jsrt": "JSRT",
-    # "mice_tumseg": "Mice TumSeg",
+    "amd_sd": "AMD-SD",
+    "jsrt": "JSRT",
+    "mice_tumseg": "Mice TumSeg",
     "papila": "Papila",
     "motum": "MOTUM",
     "psfhs": "PSFHS",
-    "sega": "SegA",
-    "dsad": "DSAD",
-    "ircadb": "IRCADb"
 }
 
 MICROSCOPY_DATASET_MAPPING = {
@@ -55,24 +52,29 @@ def plot_results(df, domain):
     )
     df['modality'] = df['modality'].replace(MODALITY_MAPPING)
     if domain == "microscopy":
-        metrics = ['ais', 'point', 'box', 'ip', 'ib'] 
-        metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+        # metrics = ['ais', 'point', 'box', 'ip', 'ib'] 
+        metrics = ['ais', 'point', 'box']
+        # metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+        metric_names = ['AIS', 'Point', 'Box']
         df['model'] = df['model'].replace({'vit_b_lm': r'$\mu$SAM', 'vit_b_em_organelles': r'$\mu$SAM'})
         df['dataset'] = df['dataset'].replace(MICROSCOPY_DATASET_MAPPING)
         datasets = MICROSCOPY_DATASET_MAPPING.values()
         models = ["$\mu$SAM", "SAM"]
         model_markers = {
+            "SAM": "x",
             r"$\mu$SAM": "^",
-            "SAM": "x"
+            "MedicoSAM": "d"
         }
     elif domain == "medical":
-        metrics = ['point', 'box', 'ip', 'ib'] 
-        metric_names = ['Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+        # metrics = ['point', 'box', 'ip', 'ib'] 
+        metrics = ['point', 'box']
+        # metric_names = ['Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+        metric_names = ['Point', 'Box']
         df['model'] = df['model'].replace({'vit_b_medical_imaging': 'MedicoSAM'})
         df['dataset'] = df['dataset'].replace(MEDICO_DATASET_MAPPING)
         datasets = MEDICO_DATASET_MAPPING.values()
         model_markers = {
-            "MedicoSAM": "^",
+            "MedicoSAM": "d",
             "SAM": "x"
         }
 
@@ -130,7 +132,7 @@ def plot_results(df, domain):
     ]
     model_handles = [
         plt.Line2D([0], [0], color="black", marker=model_markers[model], linestyle='')
-        for model in models
+        for model in model_markers.keys()
     ]
     # Ranking legend (transparent circles for ranks 1, 2, and 3)
     ranking_handles = [
@@ -142,7 +144,7 @@ def plot_results(df, domain):
 
     # Combine legends
     handles = metric_handles + model_handles + ranking_handles
-    labels = metric_names + list(models) + ranking_labels
+    labels = metric_names + list(model_markers.keys()) + ranking_labels
 
     # Add the legend to the figure
     # fig.legend(
@@ -150,16 +152,16 @@ def plot_results(df, domain):
     # )
 
     if domain == "microscopy":
-        plt.text(x=-13.8, y=1.35, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
+        plt.text(x=-13.8, y=1.2, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
     elif domain == "medical":
-        plt.text(x=-13.8, y=1.5, s="Dice Similarity Coefficient", rotation=90, fontweight="bold", fontsize=18)
+        plt.text(x=-13.8, y=1.4, s="Dice Similarity Coefficient", rotation=90, fontweight="bold", fontsize=18)
     plt.savefig(f'../../results/figures/results_{domain}_v2.svg')
+    plt.savefig(f'../../results/figures/results_{domain}_v2.png', dpi=300)
     legend_fig = plt.figure()
     legend_ax = legend_fig.add_axes([0, 0, 1, 1])
     legend_ax.legend(handles, labels, ncol=10, fontsize=13)
     legend_ax.axis('off')
     legend_fig.savefig('../../results/figures/legend.svg', bbox_inches='tight')
-
 
 
 if __name__ == "__main__":
