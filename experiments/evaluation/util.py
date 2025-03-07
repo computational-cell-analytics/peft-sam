@@ -31,7 +31,9 @@ DATASETS = [
     "mitolab/glycolytic_muscle", "platynereis/cilia",
 
     # out-of-domain (MI)
-    "papila", "motum", "psfhs", "jsrt", "amd_sd", "mice_tumseg"
+    "papila", "motum", "psfhs", "jsrt", "amd_sd", "mice_tumseg",
+    # and some new datasets
+    "sega", "ircadb", "dsad",
 ]
 
 

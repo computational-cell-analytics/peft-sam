@@ -383,6 +383,18 @@ def _to_8bit(raw):
     return raw
 
 
+# Ensures all labels are unique.
+def _cc_label_trafo(labels):
+    labels = connected_components(labels).astype(labels.dtype)
+    return labels
+
+
+# Normalize inputs
+def _to_8bit(raw):
+    raw = sam_training.util.normalize_to_8bit(raw)
+    return raw
+
+
 def _fetch_medical_loaders(
         dataset_name,
         data_root,
@@ -489,6 +501,7 @@ def _fetch_medical_loaders(
             train_ds, val_ds = torch.utils.data.random_split(
                 dataset=dataset, lengths=[1 - val_fraction, val_fraction], generator=generator
             )
+
             if split == "train":
                 return torch_em.get_data_loader(train_ds, batch_size=batch_size, shuffle=True, num_workers=16)
             else:
