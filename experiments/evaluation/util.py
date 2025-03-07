@@ -130,13 +130,13 @@ def download_all_datasets(path, for_microscopy=True):
         )
         # NEW DATASETS
         datasets.get_sega_dataset(
-            path=os.path.join(), patch_shape=(1, 512, 512), data_choice="Rider", download=True,
+            path=os.path.join(path, "sega"), patch_shape=(1, 512, 512), data_choice="Rider", download=True,
         )
         datasets.get_dsad_dataset(
-            path=os.path.join(), patch_shape=(512, 512), download=True,
+            path=os.path.join(path, "dsad"), patch_shape=(512, 512), download=True,
         )
         datasets.get_ircadb_dataset(
-            path=os.path.join(), patch_shape=(1, 512, 512), label_choice="liver", download=True,
+            path=os.path.join(path, "ircadb"), patch_shape=(1, 512, 512), label_choice="liver", download=True,
         )
 
 #
