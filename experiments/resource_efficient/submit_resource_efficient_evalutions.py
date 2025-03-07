@@ -5,8 +5,16 @@ from datetime import datetime
 from micro_sam.util import export_custom_qlora_model
 from peft_sam.dataset.preprocess_datasets import preprocess_data
 
-ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm'}
+# ALL_DATASETS = {
+#    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+#    'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
+    # medical
+
+ALL_DATASETS = {
+    'motum': 'medical_imaging', 'papila': 'medical_imaging', #'jsrt': 'medical_imaging',
+    'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
+    'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging'
+}
 
 PEFT_METHODS = {
     "lora": {"peft_rank": 32},
@@ -127,32 +135,38 @@ def run_peft_evaluations(args, datasets, n_images):
         preprocess_data(dataset)
         gen_model = f"vit_b_{domain}"
         models = ["vit_b"] if dataset == "livecell" else ["vit_b", gen_model]
+        if domain == "medical_imaging":
+            SCRIPTS = ["iterative_prompting"]
+        else:
+            SCRIPTS = ALL_SCRIPTS
         for model in models:
+
             # run generalist / vanilla
-            checkpoint = "/scratch/usr/nimcarot/sam/models/vit_b_lm.pt" if model == "vit_b_lm" else None
-            result_path = os.path.join(EXPERIMENT_ROOT, "vanilla", model, f"{n_images}_imgs", dataset)
-            if not os.path.exists(result_path):
-                os.makedirs(result_path, exist_ok=False)
-                for current_setup in ALL_SCRIPTS:
-                    write_batch_script(
-                        env_name="sam",
-                        out_path=get_batch_script_names(tmp_folder),
-                        inference_setup=current_setup,
-                        checkpoint=checkpoint,
-                        model_type=model,
-                        experiment_folder=result_path,
-                        dataset=dataset,
-                        dry=args.dry
-                    )
+            # checkpoint = "/scratch/usr/nimcarot/sam/models/vit_b_lm.pt" if model == "vit_b_lm" else None
+            # result_path = os.path.join(EXPERIMENT_ROOT, "vanilla", model, f"{n_images}_imgs", dataset)
+            # if not os.path.exists(result_path):
+            #     os.makedirs(result_path, exist_ok=False)
+            #     for current_setup in SCRIPTS:
+            #         write_batch_script(
+            #             env_name="peft-sam-qlora",
+            #             out_path=get_batch_script_names(tmp_folder),
+            #             inference_setup=current_setup,
+            #             checkpoint=checkpoint,
+            #             model_type=model,
+            #             experiment_folder=result_path,
+            #             dataset=dataset,
+            #             dry=args.dry
+            #         )
+
             # full finetuning
             checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/full_ft/{n_images}_imgs/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, "full_ft", model, f"{n_images}_imgs", dataset)
+            result_path = os.path.join(EXPERIMENT_ROOT, model, "full_ft", f"{n_images}_imgs", dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
-                for current_setup in ALL_SCRIPTS:
+                for current_setup in SCRIPTS:
                     write_batch_script(
-                        env_name="sam",
+                        env_name="peft-sam-qlora",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
@@ -164,12 +178,12 @@ def run_peft_evaluations(args, datasets, n_images):
             # freeze the encoder
             checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/freeze_encoder/{n_images}_imgs/{dataset}_sam/best.pt"
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-            result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", model, f"{n_images}_imgs", dataset)
+            result_path = os.path.join(EXPERIMENT_ROOT, model, "freeze_encoder", f"{n_images}_imgs", dataset)
             if not os.path.exists(result_path):
                 os.makedirs(result_path, exist_ok=False)
-                for current_setup in ALL_SCRIPTS:
+                for current_setup in SCRIPTS:
                     write_batch_script(
-                        env_name="sam",
+                        env_name="peft-sam-qlora",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
@@ -180,7 +194,7 @@ def run_peft_evaluations(args, datasets, n_images):
                     )
             # run peft methods
             for peft_method, peft_kwargs in PEFT_METHODS.items():
-                checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/{peft_method}/{n_images}_imgs/{dataset}_sam/best.pt"
+                checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/{peft_method}/{n_images}/{dataset}_sam/best.pt"
 
                 # Export custom QLoRA model
                 if peft_method == "qlora":
@@ -196,9 +210,9 @@ def run_peft_evaluations(args, datasets, n_images):
                 os.makedirs(result_path, exist_ok=False)
 
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
-                for current_setup in ALL_SCRIPTS:
+                for current_setup in SCRIPTS:
                     write_batch_script(
-                        env_name="sam",
+                        env_name="peft-sam-qlora",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
@@ -210,8 +224,15 @@ def run_peft_evaluations(args, datasets, n_images):
                     )
 
 
-def main():
-    run_peft_evaluations()
+def main(args):
+
+    if args.single_img:
+        run_peft_evaluations(args, ALL_DATASETS, n_images=1)
+    elif args.data_scaling:
+        n_images = [2, 5, 10]
+        datasets = {"hpa": "lm", "psfhs": "medical_imaging"}
+        for n in n_images:
+            run_peft_evaluations(args, datasets, n_images=n)
 
 
 if __name__ == "__main__":
@@ -220,4 +241,19 @@ if __name__ == "__main__":
     except FileNotFoundError:
         pass
 
-    main()
+    # Set up argument parsing
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--single_img",
+        action="store_true",
+        help="Run single image finetuning."
+    )
+    parser.add_argument(
+        "--data_scaling",
+        action="store_true",
+        help="Run data scaling experiments."
+    )
+    parser.add_argument("--dry", action="store_true")
+    args = parser.parse_args()
+    main(args)

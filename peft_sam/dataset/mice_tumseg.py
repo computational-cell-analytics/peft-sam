@@ -65,6 +65,7 @@ def get_mice_tumseg_paths(
         if stop is None:
             stop = len(raw_paths)
         raw_paths = raw_paths[start:stop]
+        label_paths = label_paths[start:stop]
 
     assert len(raw_paths) == len(label_paths) and len(raw_paths) > 0
 

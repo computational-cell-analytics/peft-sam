@@ -17,12 +17,12 @@ SAMPLE_DATA = {
     "psfhs": {'train_sample_range': (0, 1), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
     "motum": {'train_sample_range': (0, 1), 'val_sample_range': (3, 4), 'train_rois': None, 'val_rois': None},
     "papila": {'train_sample_range': (3, 4), 'val_sample_range': (10, 11), 'train_rois': None, 'val_rois': None},
-    "jsrt": {'train_sample_range': (0, 1), 'val_sample_range': (3, 4), 'train_rois': None, 'val_rois': None},
+    "jsrt": {'train_sample_range': (0, 2), 'val_sample_range': (3, 4), 'train_rois': None, 'val_rois': None},
     "amd_sd": {'train_sample_range': (16, 17), 'val_sample_range': (31, 32), 'train_rois': None, 'val_rois': None},
     "mice_tumseg": {'train_sample_range': (0, 1), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
     "sega": {'train_sample_range': (2, 4), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
     "ircadb": {'train_sample_range': (0, 1), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
-    "dsad": {'train_sample_range': (6, 7), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
+    "dsad": {'train_sample_range': (6, 8), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
 
     # microscopy
     'covid_if': {'train_sample_range': (0, 1), 'val_sample_range': (10, 11), 'train_rois': None, 'val_rois': None},

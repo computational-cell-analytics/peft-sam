@@ -75,7 +75,6 @@ def get_jsrt_paths(
             stop = len(image_paths)
         image_paths = image_paths[start:stop]
         gt_paths = gt_paths[start:stop]
-
     assert len(image_paths) == len(gt_paths)
 
     return image_paths, gt_paths

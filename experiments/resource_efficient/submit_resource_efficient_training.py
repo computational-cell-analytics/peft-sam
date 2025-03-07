@@ -3,8 +3,12 @@ import shutil
 import subprocess
 from datetime import datetime
 
-ALL_DATASETS = {'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm'}
+# ALL_DATASETS = 'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+#                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
+ALL_DATASETS = {'motum': 'medical_imaging', 'papila': 'medical_imaging', 'jsrt': 'medical_imaging',
+                'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
+                'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging',
+                }
 
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
@@ -78,7 +82,7 @@ source activate {env_name}
     if quantize:
         python_script += "--quantize "
 
-    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg']
+    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg', 'sega', 'dsad', 'ircadb']
     if dataset in medical_datasets:
         python_script += "--medical_imaging "
     # let's add the python script to the bash script
@@ -124,7 +128,7 @@ def run_peft_finetuning(args, datasets, n_images=1):
             if not cpkt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="peft-sam",
+                    env_name="peft-sam-qlora",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -139,7 +143,7 @@ def run_peft_finetuning(args, datasets, n_images=1):
             if not cpkt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="peft-sam",
+                    env_name="peft-sam-qlora",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -178,7 +182,7 @@ def main(args):
     if args.single_img:
         run_peft_finetuning(args, ALL_DATASETS, n_images=1)
     elif args.data_scaling:
-        n_images = [1, 2, 5, 10]
+        n_images = [2, 5, 10]
         datasets = {"hpa": "lm", "psfhs": "medical_imaging"}
         for n in n_images:
             run_peft_finetuning(args, datasets, n_images=n)

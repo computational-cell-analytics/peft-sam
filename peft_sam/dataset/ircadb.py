@@ -55,7 +55,6 @@ def get_ircadb_paths(
         if stop is None:
             stop = len(volume_paths)
         volume_paths = volume_paths[start:stop]
-    breakpoint()
 
     return volume_paths
 

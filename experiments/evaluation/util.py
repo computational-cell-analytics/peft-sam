@@ -7,12 +7,12 @@ from torch_em.data import datasets
 from micro_sam.evaluation.livecell import _get_livecell_paths
 
 
-# ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
+ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
 
-if os.path.exists("/media/anwai/ANWAI"):  # for Anwai
-    ROOT = "/media/anwai/ANWAI/data"
-else:
-    ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
+#if os.path.exists("/media/anwai/ANWAI"):  # for Anwai
+#    ROOT = "/media/anwai/ANWAI/data"
+#else:
+#    ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
 
 # EXPERIMENT_ROOT = "/scratch/projects/nim00007/sam/experiments/new_models"
 
@@ -176,6 +176,12 @@ def get_default_arguments():
     )
     parser.add_argument(
         "--projection_size", default=None, type=int, help="Projection size for Adaptformer module."
+    )
+    parser.add_argument(
+        "--attention_layers_to_update", default=None, type=int, nargs="+", help="The attention layers to update."
+    )
+    parser.add_argument(
+        "--update_matrices", default=None, type=str, nargs="+", help="The matrices to update."
     )
     parser.add_argument("--quantize", action="store_true", help="Whether to quantize the model.")
 
