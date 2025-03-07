@@ -385,18 +385,6 @@ def _to_8bit(raw):
     return raw
 
 
-# Ensures all labels are unique.
-def _cc_label_trafo(labels):
-    labels = connected_components(labels).astype(labels.dtype)
-    return labels
-
-
-# Normalize inputs
-def _to_8bit(raw):
-    raw = sam_training.util.normalize_to_8bit(raw)
-    return raw
-
-
 def _fetch_medical_loaders(
         dataset_name,
         data_root,
