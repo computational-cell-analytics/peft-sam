@@ -68,7 +68,8 @@ def get_default_peft_kwargs(method: str):
         A dictionary with predefined peft arguments.
     """
     supported_peft_methods = [
-        "lora", "qlora", "fact", "attention_tuning", "adaptformer", "bias_tuning", "layernorm_tuning", "ssf", "late_lora"
+        "lora", "qlora", "fact", "attention_tuning", "adaptformer", "bias_tuning",
+        "layernorm_tuning", "ssf", "late_lora"
     ]
 
     if method is None:
@@ -165,12 +166,12 @@ def get_peft_kwargs(
 
         elif peft_module == 'AttentionSurgery':
             peft_kwargs = {"peft_module": peft_sam.AttentionSurgery}
- 
+
         elif peft_module == 'ClassicalSurgery':
             peft_kwargs = {
                 "peft_module": peft_sam.ClassicalSurgery,
                 "attention_layers_to_update": attention_layers_to_update
-        }
+            }
 
         elif peft_module == 'BiasSurgery':
             from micro_sam.models.peft_sam import BiasSurgery

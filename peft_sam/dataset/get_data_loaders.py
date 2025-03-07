@@ -303,7 +303,8 @@ def _fetch_microscopy_loaders(
             sampler=sampler,
             ndim=2,
             sample_range=train_sample_range,
-            n_samples=n_train_samples
+            n_samples=n_train_samples,
+            num_workers=16,
         )
         val_loader = get_hpa_segmentation_loader(
             path=os.path.join(data_root, "hpa"),
@@ -318,7 +319,8 @@ def _fetch_microscopy_loaders(
             sampler=sampler,
             ndim=2,
             sample_range=val_sample_range,
-            n_samples=n_val_samples
+            n_samples=n_val_samples,
+            num_workers=16,
         )
 
     else:

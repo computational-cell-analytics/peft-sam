@@ -40,8 +40,8 @@ def finetune_sam(args):
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
     peft_kwargs = get_peft_kwargs(
-        args.peft_method,
-        args.peft_rank,
+        peft_module=args.peft_method,
+        peft_rank=args.peft_rank,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
