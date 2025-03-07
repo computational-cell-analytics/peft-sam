@@ -309,12 +309,12 @@ def main(args):
     # from util import download_all_datasets
     # download_all_datasets(path=args.input_path, for_microscopy=False)
 
-    # _process_papila_data(data_path, view)
-    # _process_motum_data(data_path, view)
-    # _process_psfhs_data(data_path, view)
-    # _process_jsrt_data(data_path, view)
-    # _process_amd_sd_data(data_path, view)
-    # _process_mice_tumseg_data(data_path, view)
+    _process_papila_data(data_path, view)
+    _process_motum_data(data_path, view)
+    _process_psfhs_data(data_path, view)
+    _process_jsrt_data(data_path, view)
+    _process_amd_sd_data(data_path, view)
+    _process_mice_tumseg_data(data_path, view)
 
     # NEW DATASETS
     _process_sega(data_path, view)

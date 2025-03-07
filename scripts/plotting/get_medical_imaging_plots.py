@@ -81,6 +81,24 @@ def get_mi_qualitative_plots(dataset_name, experiment_folder, view_napari=False,
             choice="Segmentation02", raw_transform=sam_training.identity, transform=_transform_identity,
             label_transform=_jsrt_label_trafo, sampler=MinInstanceSampler(), resize_inputs=True,
         ),
+        # NEW DATASETS
+        "sega": lambda: medical.get_sega_loader(
+            path=os.path.join(DATA_ROOT, "sega"), batch_size=1, patch_shape=(1, 512, 512), data_choice="Rider",
+            resize_inputs=True, raw_transform=sam_training.util.normalize_to_8bit, transform=_transform_identity,
+            label_transform=_amd_sd_label_trafo,  # I'm too lazy to change fn.names, but it's just connected components.
+            sampler=MinInstanceSampler(), shuffle=True,
+        ),
+        "dsad": lambda: medical.get_dsad_loader(
+            path=os.path.join(DATA_ROOT, "dsad"), patch_shape=(1, 512, 512), batch_size=1, organ="liver",
+            resize_inputs=True, raw_transform=sam_training.identity, transform=_transform_identity,
+            label_transform=_amd_sd_label_trafo,  # lazy here as well.
+            sampler=MinInstanceSampler(min_size=25), shuffle=True,
+        ),
+        "ircadb": lambda: medical.ircadb.get_ircadb_loader(
+            path=os.path.join(DATA_ROOT, "ircadb"), batch_size=1, patch_shape=(1, 512, 512), label_choice="liver",
+            split="test", resize_inputs=True, sampler=MinInstanceSampler(min_size=50), n_samples=100,
+            raw_transform=sam_training.identity, transform=_transform_identity, label_transform=_amd_sd_label_trafo,
+        ),
     }
 
     # Get the dataloader
