@@ -114,6 +114,8 @@ def barplot(df, is_medical=False):
     for i, model in enumerate(models):
         ax = axes[i]
         model_data = df[df['model'] == model]
+        avg_train_times = model_data.groupby('method')['train_time'].mean().reindex(modality_order)
+
         for dataset, color in zip(datasets, COLORS):
             dataset_data = model_data[model_data['dataset'] == dataset]
             dataset_data = dataset_data.sort_values(
@@ -126,8 +128,18 @@ def barplot(df, is_medical=False):
                 label=dataset,
                 color=color,
                 marker='o',
-                alpha=0.8
+                alpha=0.5
             )
+        # Add the average line in dark grey
+        ax.plot(
+            avg_train_times.index,
+            avg_train_times.values,
+            color='black',
+            marker='o',
+            linestyle='--',
+            linewidth=2,
+            label='Average'
+        )
         ax_handles, ax_labels = ax.get_legend_handles_labels()
         # Append to the overall lists (only once)
         if i == 0:
@@ -143,16 +155,16 @@ def barplot(df, is_medical=False):
         handles,
         labels,
         loc='lower center',          # Place legend at the bottom
-        ncol=7,                      # 5 columns
+        ncol=8,                      # 5 columns
         fontsize=10,
         title_fontsize=12
     )
     # Adjust layout
     fig.tight_layout(rect=[0, 0.05, 1, 0.98])  # Adjust space for the legend
     if is_medical:
-        plt.savefig('../../results/figures/medical_training_times.png', dpi=300)
+        plt.savefig('../../results/figures/medical_training_times_v2.pdf', dpi=300)
     else:
-        plt.savefig('../../results/figures/training_times.png', dpi=300)
+        plt.savefig('../../results/figures/training_times_v2.pdf', dpi=300)
 
 
 def main():
