@@ -4,7 +4,7 @@ import pandas as pd
 
 from matplotlib.colors import LinearSegmentedColormap
 
-COLORS = ["#FF8B94", "#56A4C4", "#82D37E", "#FFE278", "#9C89E2"]
+COLORS = ["#045275", "#7CCBA2", "#90477F", "#089099", "#F0746E"]
 TASKS = {"ais": "AIS", "single point": "Point", "single box": "Box", "ip": r"$I_{\mathbfit{P}}$", "ib": r"$I_{\mathbfit{B}}$"}
 
 
@@ -35,7 +35,7 @@ def plot_results(df):
     fig.tight_layout(rect=[0.04, 0.05, 1, 0.95])  # Adjust space for the legend
     fig.subplots_adjust(hspace=0.3)
     plt.text(x=-2.55, y=0.6, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=15)
-    plt.savefig("../../results/figures/adaptformer_1.png", dpi=300)
+    plt.savefig("../../results/figures/adaptformer_1.pdf", dpi=300)
 
 
 def plot_heatmap(df):
@@ -58,7 +58,7 @@ def plot_heatmap(df):
     empty_ax = axes.flatten()[-1]
     empty_ax.axis('off')
     plt.tight_layout()
-    plt.savefig("../../results/figures/adaptformer_2.png", dpi=300)
+    plt.savefig("../../results/figures/adaptformer_2.pdf", dpi=300)
 
 
 def main():

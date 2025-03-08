@@ -103,7 +103,7 @@ def create_barplot(df, medical=False):
     hatches = {
         'SAM': '',
         r'$\mu$SAM': '///',
-        'MedicoSAM': '--'
+        'MedicoSAM': '\\\\'
     }
     # Create subplots for each dataset
     fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(10, 15), constrained_layout=True)
@@ -161,7 +161,7 @@ def create_barplot(df, medical=False):
     model_legend = [
         Patch(facecolor='white', edgecolor='black', hatch=None, label="SAM"),
         Patch(facecolor='white', edgecolor='black', hatch='///', label=r"$\mu$SAM"),
-        Patch(facecolor='white', edgecolor='black', hatch='--', label="MedicoSAM"),
+        Patch(facecolor='white', edgecolor='black', hatch='\\\\', label="MedicoSAM"),
     ]
     line_legend = [
         Line2D([0], [0], color='black', linestyle='-', label="CellSeg1 - SAM"),
@@ -198,5 +198,5 @@ if __name__ == "__main__":
     df = pd.read_csv("../../results/single_img_training.csv")
     create_barplot(df)
 
-    # df = pd.read_csv("../../results/single_img_training_medical.csv")
-    # create_barplot(df, medical=True)
+    #df = pd.read_csv("../../results/single_img_training_medical.csv")
+    #create_barplot(df, medical=True)

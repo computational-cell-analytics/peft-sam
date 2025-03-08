@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
-COLORS = ["#FF8B94", "#56A4C4", "#82D37E", "#FFE278", "#9C89E2"]
+COLORS = ["#045275", "#7CCBA2", "#90477F", "#089099", "#F0746E"]
+
 TASKS = {"ais": "AIS", "single point": "Point", "single box": "Box", "ip": r"$I_{\mathbfit{P}}$", "ib": r"$I_{\mathbfit{B}}$"}
 MARKERS = ["o", "^", "X"]
 subtitle_font = {"fontsize": 12, "fontweight": "bold"}
@@ -35,7 +36,7 @@ def plot_lora_a(df):
     fig.tight_layout(rect=[0.05, 0.05, 0.99, 0.99])  # Adjust space for the legend
     fig.subplots_adjust(hspace=0.33)
     plt.text(x=-1.3, y=1.0, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=16)
-    plt.savefig("../../results/figures/lora_1.png", dpi=300)
+    plt.savefig("../../results/figures/lora_1.pdf", dpi=300)
 
 
 def plot_lora_b(df):
@@ -54,7 +55,7 @@ def plot_lora_b(df):
             ax.set_xlabel("Learning Rate")
 
     plt.tight_layout()
-    plt.savefig("../../results/figures/lora_2.png", dpi=300)
+    plt.savefig("../../results/figures/lora_2.pdf", dpi=300)
 
 
 def plot_lora_c(df):
@@ -143,7 +144,7 @@ def plot_lora_c(df):
     fig.legend(
         handles, labels, loc='lower center', ncol=10, fontsize=10,
     )
-    plt.savefig('../../results/figures/lora_3.png', dpi=300)
+    plt.savefig('../../results/figures/lora_3.pdf', dpi=300)
 
 
 def main():

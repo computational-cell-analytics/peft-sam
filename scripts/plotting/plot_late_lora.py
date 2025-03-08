@@ -7,7 +7,7 @@ import os
 from matplotlib.patches import Patch
 import matplotlib.patches as mpatches
 
-all_datasets = ['psfhs']
+all_datasets = ['psfhs', 'hpa']
 methods = ['lora', 'ClassicalSurgery']
 update_matrices = ['standard', 'all_matrices']
 attention_layers_to_update = [[6, 7, 8, 9, 10, 11], [9, 10, 11], [11]]
@@ -22,17 +22,11 @@ CUSTOM_PALETTE = {
 
 DATASETS = {
     'psfhs': 'PSFHS',
-    'test': 'Test'
-}
-
-METHODS = {
-    "freeze": "Partial Unfreezing",
-    "lora-all": "LoRA all",
-    "lora-standard": "LoRA standard",
+    'hpa': 'HPA'
 }
 
 DOMAIN = {
-    "test": "microscopy",
+    "hpa": "microscopy",
     "psfhs": "medical"
 }
 
@@ -78,7 +72,7 @@ def extract_results(experiment_folder):
             "dataset": dataset,
             "method": method,
             "update_matrices": update_matrices,
-            "start_layer": int(start_layer.split('_')[-1]),
+            "start_layer": int(start_layer.split('_')[-1]) + 1,
             "box": single_box,
             "point": single_point,
             "ib": ib,
@@ -90,7 +84,8 @@ def extract_results(experiment_folder):
 
 
 def plot_late_lora(data):
-    metrics = ['box', 'point', 'ib', 'ip', 'ais']
+    # metrics = ['box', 'point', 'ib', 'ip', 'ais']
+    metrics = ['box', 'ais', 'point']
     df_long = pd.melt(
         data,
         id_vars=["dataset", "method", "update_matrices", "start_layer"],
@@ -99,14 +94,17 @@ def plot_late_lora(data):
         value_name="value"
     )
 
+    replace_layer = {'1': '100%', '7': '50%', '10': '25%', '12': '8%', 'freeze encoder': 'Freeze Encoder (0%)'}
+    df_long['start_layer'] = df_long['start_layer'].replace(replace_layer)
     # Create a new 'group' column based on your rules
+
     def assign_group(row):
         if row['method'] == 'lora' and row['update_matrices'] == 'standard':
-            return 'lora-standard'
+            return 'LoRA (Classic)'
         elif row['method'] == 'lora' and row['update_matrices'] == 'all_matrices':
-            return 'lora-all'
+            return 'LoRA (All)'
         elif row['method'] == 'ClassicalSurgery':
-            return 'freeze'
+            return 'Full Finetuning'
         else:
             return None
 
@@ -125,22 +123,21 @@ def plot_late_lora(data):
     if n_datasets == 1:
         axes = [axes]
 
-    # Define a color palette for metrics
-    metric_list = ['ib', 'ip', 'box', 'point', 'ais']
+    metric_list = ['box', 'ais', 'point']
     hatch_dict = {
-        'lora-standard': '///',   # hatched
-        'lora-all': '.',          # dotted
-        'freeze': ''    # no pattern
+        'LoRA (Classic)': '///',   # hatched
+        'LoRA (All)': 'oo',          # dotted
+        'Full Finetuning': ''    # no pattern
     }
 
     # Fixed order for groups (if present)
-    groups_order = ['lora-standard', 'lora-all', 'freeze']
+    groups_order = ['LoRA (All)', 'LoRA (Classic)', 'Full Finetuning']
 
     # Plot each dataset in its own subplot
     for ax, dataset in zip(axes, datasets):
         subset = df_plot[df_plot['dataset'] == dataset]
         # Treat start_layer as categorical by sorting and then assigning an index for even spacing.
-        unique_layers = sorted(subset['start_layer'].unique())
+        unique_layers = ['100%', '50%', '25%', '8%', 'Freeze Encoder (0%)']
         layer_positions = {layer: i for i, layer in enumerate(unique_layers)}
 
         n_groups = len(groups_order)
@@ -162,24 +159,27 @@ def plot_late_lora(data):
         # Use evenly spaced ticks based on the number of unique layers and label them with the actual start_layer values.
         ax.set_xticks(list(layer_positions.values()))
         ax.set_xticklabels(unique_layers)
-        ax.set_title(f'{DATASETS[dataset]}')
+        ax.set_title(f'{DATASETS[dataset]}', fontweight='bold', fontsize=15)
         plt.setp(ax.get_xticklabels(), fontstyle='italic')
-        ax.set_xlabel('Starting Block for PEFT Application')
+        ax.set_xlabel('Late Freezing Percentage')
         if DOMAIN[dataset] == "microscopy":
-            ax.set_ylabel("Mean Segmentation Accuracy")
+            ax.set_ylabel("Mean Segmentation Accuracy", fontsize=12, fontweight='bold')
         else:
-            ax.set_ylabel('Dice Score')
+            ax.set_ylabel('Dice Similarity Coefficient', fontsize=12, fontweight='bold')
 
+        metric_names = {'ais': 'AIS', 'box': 'Box', 'point': 'Point'}
         # Add legend using one patch per metric
+        metric_list = ['ais', 'box', 'point']
         metric_handles = [Patch(facecolor=CUSTOM_PALETTE[m], label=m, alpha=0.7) for m in metric_list]
-        metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+        # metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
+        metric_names = ['AIS', 'Box', 'Point']
 
     handles = []
     labels = []
     for grp in groups_order:
         patch = mpatches.Patch(facecolor='white', edgecolor='black', hatch=hatch_dict[grp], label=grp)
         handles.append(patch)
-        labels.append(METHODS[grp])
+        labels.append(grp)
     handles = handles + metric_handles
     labels = labels + metric_names
     fig.legend(handles=handles, labels=labels, loc='lower center', ncol=8)
@@ -187,14 +187,14 @@ def plot_late_lora(data):
     plt.tight_layout()
     fig.tight_layout(rect=[0.01, 0.05, 0.99, 0.99])  # Adjust space for the legend
 
-    plt.savefig('../../results/figures/late_lora_results.png', dpi=300)
+    plt.savefig('../../results/figures/late_lora_results.svg', dpi=300)
 
 
 def main():
 
-    # experiment_folder = '/scratch/usr/nimcarot/sam/experiments/peft'
-    # data = extract_results(experiment_folder)
-    # data.to_csv("../../results/late_lora_results.csv", index=False)
+    #experiment_folder = '/scratch/usr/nimcarot/sam/experiments/peft'
+    #data = extract_results(experiment_folder)
+    #data.to_csv("../../results/late_lora_results.csv", index=False)
 
     data = pd.read_csv("../../results/late_lora_results.csv")
     plot_late_lora(data)
