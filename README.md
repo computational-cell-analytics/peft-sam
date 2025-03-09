@@ -8,9 +8,7 @@ How to install `peft_sam` python library from source?
 
 We recommend to first setup an environment with the necessary requirements:
 
-- `environment.yaml`: to set up an environment on Linux or Mac OS.
-- `environment_cpu_win.yaml`: to set up an environment on Windows with CPU support.
-- `environment_gpu_win.yaml`: to set up an environment on Windows with GPU support.
+- `environment.yaml`: to set up an environment on any platform.
 - `environment_qlora.yaml`: to set up an environment on any platform, with GPU support only.
 
 
