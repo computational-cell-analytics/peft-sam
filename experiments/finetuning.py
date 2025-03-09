@@ -156,7 +156,8 @@ def main():
         "--quantize", action="store_true", help="Whether to quantize the model."
     )
     parser.add_argument(
-        '--attention_layers_to_update', default=[], nargs='+', type=int, help='A list of attention blocks to update during PEFT',
+        '--attention_layers_to_update', default=[], nargs='+', type=int,
+        help='A list of attention blocks to update during PEFT',
     )
     parser.add_argument('--update_matrices', nargs='+', help='A list of matrices to update during LoRA')
     args = parser.parse_args()

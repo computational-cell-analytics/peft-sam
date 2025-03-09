@@ -119,8 +119,10 @@ def run_late_lora_finetuning(args):
 
             if ckpt_exists(checkpoint_name, args):
                 continue
+
             if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
                 continue
+
             write_batch_script(
                 env_name="peft-sam",
                 save_root=args.save_root,

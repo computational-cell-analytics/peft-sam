@@ -24,7 +24,7 @@ def get_peft_train_times_for_mi(model_type):
         peft_method = psplit[-3]
 
         # Get train times.
-        train_time = torch.load(checkpoint_path, map_location="cpu")["train_time"]
+        train_time = torch.load(checkpoint_path, map_location="cpu", weights_only=False)["train_time"]
 
         time_per_checkpoint.append(
             pd.DataFrame.from_dict([{"dataset": data_name, "peft": peft_method, "best_train_time": train_time}])
@@ -82,11 +82,11 @@ def validate_results(dataset_name, model_name, prompt):
 
 
 def main():
-    # get_peft_train_times_for_mi("vit_b")
-    # get_peft_train_times_for_mi("vit_b_medical_imaging")
+    get_peft_train_times_for_mi("vit_b")
+    get_peft_train_times_for_mi("vit_b_medical_imaging")
 
     # assort_quantitative_results()
-    validate_results("dsad", "vit_b", "point")
+    # validate_results("dsad", "vit_b", "point")
 
 
 if __name__ == "__main__":

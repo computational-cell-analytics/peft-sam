@@ -4,14 +4,9 @@ import subprocess
 import itertools
 from datetime import datetime
 
-DATASETS = {"psfhs": "medical_imaging"}
-
-
+DATASETS = {"hpa": "lm", "psfhs": "medical_imaging"}
 EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
-ALL_SCRIPTS = [
-    "evaluate_instance_segmentation",
-    "iterative_prompting",
-]
+ALL_SCRIPTS = ["evaluate_instance_segmentation", "iterative_prompting"]
 
 
 def write_batch_script(
@@ -131,6 +126,7 @@ def run_peft_evaluations(args):
     for dataset, domain in DATASETS.items():
         if args.dataset is not None and args.dataset != dataset:
             continue
+
         SCRIPTS = ["iterative_prompting"] if domain == "medical_imaging" else ALL_SCRIPTS
 
         model = f"vit_b_{domain}"
@@ -150,20 +146,25 @@ def run_peft_evaluations(args):
                 dry=args.dry
             )
 
-        for method, layers, update_matrix in itertools.product(peft_methods, attention_layers_to_update,
-                                                               update_matrices.keys()):
+        for method, layers, update_matrix in itertools.product(
+            peft_methods, attention_layers_to_update, update_matrices.keys()
+        ):
             if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
                 continue
+
             # late lora and partial freezing
-            checkpoint = f"{experiment_folder}/checkpoints/{model}/late_lora/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
+            checkpoint = f"{experiment_folder}/checkpoints/{model}/late_lora/{method}/"
+            checkpoint += f"{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
+            if method == "ClassicalSurgery":
+                continue
 
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
             result_path = os.path.join(experiment_folder, method, update_matrix, f"start_{layers[0]}", dataset)
             os.makedirs(result_path, exist_ok=True)
 
-            for current_setup in SCRIPTS:
+            for current_setup in ALL_SCRIPTS:
                 write_batch_script(
-                    env_name="peft-sam-qlora",
+                    env_name="peft-sam",
                     out_path=get_batch_script_names(tmp_folder),
                     inference_setup=current_setup,
                     checkpoint=checkpoint,
