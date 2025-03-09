@@ -19,7 +19,7 @@ def finetune_sam(args):
 
     # training settings:
     model_type = args.model_type
-    checkpoint_path = None  # override this to start training from a custom checkpoint
+    checkpoint_path = args.checkpoint_path  # specify custom checkpoint to start training from
     n_objects_per_batch = args.n_objects  # this is the number of objects per batch that will be sampled
     freeze_parts = args.freeze  # override this to freeze different parts of the model
     dataset = args.dataset
@@ -40,7 +40,6 @@ def finetune_sam(args):
 
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
-
     peft_kwargs = get_peft_kwargs(
         peft_rank=args.peft_rank,
         peft_module=args.peft_method,
@@ -48,8 +47,9 @@ def finetune_sam(args):
         dropout=args.dropout,
         projection_size=args.projection_size,
         quantize=args.quantize,
+        attention_layers_to_update=args.attention_layers_to_update,
+        update_matrices=args.update_matrices,
     )
-    print(peft_kwargs)
     print("PEFT arguments: ", peft_kwargs)
 
     # Run training.
@@ -105,6 +105,10 @@ def main():
         help="The model type to use for fine-tuning. Either vit_h, vit_b or vit_l."
     )
     parser.add_argument(
+        "--checkpoint_path", "-c", default=None,
+        help="The checkpoint path to start training from."
+    )
+    parser.add_argument(
         "--save_root", "-s", default=None,
         help="Where to save the checkpoint and logs. By default they will be saved where this script is run."
     )
@@ -152,6 +156,11 @@ def main():
     parser.add_argument(
         "--quantize", action="store_true", help="Whether to quantize the model."
     )
+    parser.add_argument(
+        '--attention_layers_to_update', nargs='+', type=int, help='A list of attention blocks to update during PEFT',
+        required=True
+    )
+    parser.add_argument('--update_matrices', nargs='+', help='A list of matrices to update during LoRA')
     args = parser.parse_args()
     finetune_sam(args)
 
