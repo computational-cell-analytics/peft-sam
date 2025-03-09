@@ -37,7 +37,9 @@ def get_sega_paths(
         if isinstance(data_choice, str):
             data_choices = [data_choice]
 
-    data_dirs = [sega.get_sega_data(path=path, data_choice=data_choice, download=download) for data_choice in data_choices]
+    data_dirs = [
+        sega.get_sega_data(path=path, data_choice=data_choice, download=download) for data_choice in data_choices
+    ]
 
     image_paths, gt_paths = [], []
     for data_dir in data_dirs:
@@ -78,6 +80,7 @@ def get_sega_paths(
 
         nib.save(image_nifti, fimage_path)
         nib.save(gt_nifti, fgt_path)
+
     if sample_range is not None:
         start, stop = sample_range
         if start is None:

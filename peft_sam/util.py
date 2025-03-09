@@ -98,14 +98,15 @@ def get_default_peft_kwargs(method: str):
 
         elif method == "adaptformer":
             peft_kwargs = get_peft_kwargs(
-                peft_module=method, alpha="learnable_scalar", dropout=None, projection_size=64
+                peft_module=method, alpha="learnable_scalar", dropout=None, projection_size=64,
             )
+
         elif method == "late_lora":
             peft_kwargs = get_peft_kwargs(
                 peft_rank=32,
                 peft_module="lora",
                 attention_layers_to_update=list(range(6, 12)),
-                update_matrices=["q", "k", "v", "mlp"]
+                update_matrices=["q", "k", "v", "mlp"],
             )
 
         else:

@@ -20,7 +20,10 @@ from torch_em.data.datasets.medical import psfhs
 
 
 def get_psfhs_paths(
-    path: Union[os.PathLike, str], split: Literal['train', 'val', 'test'], download: bool = False, sample_range: Tuple[int, int] = None
+    path: Union[os.PathLike, str],
+    split: Literal['train', 'val', 'test'],
+    download: bool = False,
+    sample_range: Tuple[int, int] = None,
 ) -> Tuple[List[int], List[int]]:
     """Get paths to the PSFHS dataset.
 

@@ -143,5 +143,7 @@ def get_mice_tumseg_loader(
         The DataLoader.
     """
     ds_kwargs, loader_kwargs = util.split_kwargs(torch_em.default_segmentation_dataset, **kwargs)
-    dataset = get_mice_tumseg_dataset(path, patch_shape, split, rater, resize_inputs, download, sample_range, **ds_kwargs)
+    dataset = get_mice_tumseg_dataset(
+        path, patch_shape, split, rater, resize_inputs, download, sample_range, **ds_kwargs
+    )
     return torch_em.get_data_loader(dataset, batch_size, **loader_kwargs)
