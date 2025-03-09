@@ -1,15 +1,19 @@
 import os
 from tqdm import tqdm
 
+import random
 import numpy as np
 from skimage.measure import label as connected_components
 
+import torch_em
 from torch_em.data import datasets, MinInstanceSampler
 
 from tukra.io import write_image
 
 from micro_sam.training import identity
 from micro_sam.training.util import normalize_to_8bit
+
+from peft_sam.dataset.get_data_loaders import _to_8bit, _cc_label_trafo
 
 
 def _transform_identity(raw, labels):  # This is done to avoid any transformations.
@@ -183,6 +187,119 @@ def _process_mice_tumseg_data(data_path, view):
     _store_images("mice-tumorseg", os.path.join(data_path, "mice_tumseg"), loader, view)
 
 
+def _process_sega(data_path, view):
+    # The break-down below is done to choose custom test split.
+
+    # Get one specific split of this data and use that for train-val-test.
+    raw_paths, label_paths = datasets.medical.sega.get_sega_paths(
+        path=os.path.join(data_path, "sega"), data_choice="Rider", download=True,
+    )
+
+    # First 12 images are for training. We use the rest for evaluation
+    raw_paths, label_paths = raw_paths[12:], label_paths[12:]
+
+    # Get the resize transforms.
+    patch_shape = (1, 512, 512)
+    kwargs, patch_shape = datasets.util.update_kwargs_for_resize_trafo(
+        kwargs={"raw_transform": _to_8bit, "transform": _transform_identity, "label_transform": _cc_label_trafo},
+        patch_shape=patch_shape, resize_inputs=True, resize_kwargs={"patch_shape": patch_shape, "is_rgb": False},
+    )
+
+    # Get the dataset.
+    dataset = torch_em.default_segmentation_dataset(
+        raw_paths=raw_paths,
+        raw_key="data",
+        label_paths=label_paths,
+        label_key="data",
+        patch_shape=patch_shape,
+        is_seg_dataset=True,
+        ndim=2,
+        n_samples=100,
+        sampler=MinInstanceSampler(min_size=50),
+        **kwargs
+    )
+
+    # Get the loader
+    loader = torch_em.get_data_loader(dataset, batch_size=1, shuffle=True, num_workers=16)
+
+    _store_images("sega", os.path.join(data_path, "sega"), loader, view)
+
+
+def _process_ircadb(data_path, view):
+
+    loader = datasets.get_ircadb_loader(
+        path=os.path.join(data_path, "ircadb"),
+        batch_size=1,
+        patch_shape=(1, 512, 512),
+        ndim=2,
+        label_choice="liver",
+        split="test",
+        resize_inputs=True,
+        download=True,
+        raw_transform=_to_8bit,
+        transform=_transform_identity,
+        sampler=MinInstanceSampler(min_size=50),
+        n_samples=100,
+        shuffle=True,
+        num_workers=16,
+    )
+
+    _store_images("ircadb", os.path.join(data_path, "ircadb"), loader, view)
+
+
+def _process_dsad(data_path, view):
+    # The break-down below is done to choose custom test split.
+
+    # Get the image and label paths.
+    raw_paths, label_paths = [], []
+    for _organ in ["liver", "pancreas", "spleen", "colon"]:
+        _rpaths, _lpaths = datasets.dsad.get_dsad_paths(
+            path=os.path.join(data_path, "dsad"), organ=_organ, download=True,
+        )
+
+        # We need to do this step randomly, i.e. randomly pick 50 images
+        _rpaths, _lpaths = _rpaths[250:], _lpaths[250:]  # first, exclude the train set.
+        idxx = random.sample(range(len(_rpaths)), 25)  # choose the random indices first
+
+        # Now we know the indices, Sample those images and corresponding labels.
+        _rpaths = [_rpaths[i] for i in idxx]
+        _lpaths = [_lpaths[i] for i in idxx]
+
+        # The first 250 per organ are for training. We take randomly chosen 50 over the remaining.
+        raw_paths.extend(_rpaths)
+        label_paths.extend(_lpaths)
+
+    # Get the resize transforms.
+    kwargs, patch_shape = datasets.util.update_kwargs_for_resize_trafo(
+        kwargs={
+            "raw_transform": identity,
+            "transform": _transform_identity,
+            "label_transform": _cc_label_trafo,
+            "sampler": MinInstanceSampler(min_size=25),
+        },
+        patch_shape=(1, 512, 512),
+        resize_inputs=True,
+        resize_kwargs={"patch_shape": (1, 512, 512), "is_rgb": True},
+    )
+
+    # Get the dataset.
+    dataset = torch_em.default_segmentation_dataset(
+        raw_paths=raw_paths,
+        raw_key=None,
+        label_paths=label_paths,
+        label_key=None,
+        patch_shape=patch_shape,
+        with_channels=True,
+        is_seg_dataset=False,
+        **kwargs
+    )
+
+    # Get the dataloader.
+    loader = torch_em.get_data_loader(dataset, batch_size=1, shuffle=True, num_workers=16)
+
+    _store_images("dsad", os.path.join(data_path, "dsad"), loader, view, is_rgb=True)
+
+
 def main(args):
     data_path = args.input_path
     view = args.view
@@ -198,6 +315,11 @@ def main(args):
     _process_jsrt_data(data_path, view)
     _process_amd_sd_data(data_path, view)
     _process_mice_tumseg_data(data_path, view)
+
+    # NEW DATASETS
+    _process_sega(data_path, view)
+    _process_ircadb(data_path, view)
+    _process_dsad(data_path, view)
 
 
 if __name__ == "__main__":

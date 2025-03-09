@@ -184,6 +184,6 @@ def get_peft_kwargs(
             peft_kwargs = {"peft_module": peft_sam.SSFSurgery}
 
         else:
-            raise ValueError
+            raise ValueError(peft_module)
 
     return peft_kwargs

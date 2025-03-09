@@ -1,5 +1,6 @@
 import os
 import argparse
+from pathlib import Path
 
 import torch
 
@@ -40,8 +41,8 @@ def finetune_sam(args):
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
     peft_kwargs = get_peft_kwargs(
-        peft_module=args.peft_method,
         peft_rank=args.peft_rank,
+        peft_module=args.peft_method,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
@@ -69,6 +70,7 @@ def finetune_sam(args):
         optimizer_class=optimizer_class,
         peft_kwargs=peft_kwargs,
         with_segmentation_decoder=(not args.medical_imaging),
+        overwrite_training=False,
     )
 
     if args.export_path is not None:
@@ -81,10 +83,18 @@ def finetune_sam(args):
 
     if args.quantize:
         checkpoint_path = os.path.join(
+            "" if args.save_root is None else args.save_root, "checkpoints", checkpoint_name, "best.pt"
+        )
+        save_path = os.path.join(
             "" if args.save_root is None else args.save_root, "checkpoints", checkpoint_name, "for_inference", "best.pt"
         )
+        os.makedirs(Path(save_path).parent, exist_ok=True)
+
         export_custom_qlora_model(
-            checkpoint_path=checkpoint_path, model_type=model_type, save_path=args.checkpoint_path,
+            checkpoint_path=None,  # i.e. use the weights of "model_type" chosen model.
+            finetuned_path=checkpoint_path,  # filepath to the custom finetuned model.
+            model_type=model_type,
+            save_path=save_path,  # filepath where the desired qlora model will be exported.
         )
 
 
@@ -116,7 +126,7 @@ def main():
         "--dataset", "-d", type=str, required=True, help="The dataset to use for training."
     )
     parser.add_argument(
-        "--input_path", "-i", type=str, default="/scratch/usr/nimcarot/data",
+        "--input_path", "-i", type=str, default="/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data",
         help="Specifies the path to the data directory (set to ./data if dataset is at ./data/<dataset_name>)"
     )
     parser.add_argument(

@@ -7,12 +7,12 @@ from torch_em.data import datasets
 from micro_sam.evaluation.livecell import _get_livecell_paths
 
 
-ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
+# ROOT = "/scratch/usr/nimcarot/data/"  # for Caro
 
-# if os.path.exists("/media/anwai/ANWAI"):  # for Anwai
-#    ROOT = "/media/anwai/ANWAI/data"
-# else:
-#    ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
+if os.path.exists("/media/anwai/ANWAI"):  # for Anwai
+    ROOT = "/media/anwai/ANWAI/data"
+else:
+    ROOT = "/mnt/vast-nhr/projects/cidas/cca/experiments/peft_sam/data"
 
 # EXPERIMENT_ROOT = "/scratch/projects/nim00007/sam/experiments/new_models"
 
@@ -31,7 +31,9 @@ DATASETS = [
     "mitolab/glycolytic_muscle", "platynereis/cilia",
 
     # out-of-domain (MI)
-    "papila", "motum", "psfhs", "jsrt", "amd_sd", "mice_tumseg"
+    "papila", "motum", "psfhs", "jsrt", "amd_sd", "mice_tumseg",
+    # and some new datasets
+    "sega", "ircadb", "dsad",
 ]
 
 
@@ -125,6 +127,16 @@ def download_all_datasets(path, for_microscopy=True):
         )
         datasets.get_mice_tumseg_dataset(
             path=os.path.join(path, "mice_tumseg"), patch_shape=(1, 512, 512), split="test", download=True,
+        )
+        # NEW DATASETS
+        datasets.get_sega_dataset(
+            path=os.path.join(path, "sega"), patch_shape=(1, 512, 512), data_choice="Rider", download=True,
+        )
+        datasets.get_dsad_dataset(
+            path=os.path.join(path, "dsad"), patch_shape=(512, 512), download=True,
+        )
+        datasets.get_ircadb_dataset(
+            path=os.path.join(path, "ircadb"), patch_shape=(1, 512, 512), label_choice="liver", download=True,
         )
 
 #
