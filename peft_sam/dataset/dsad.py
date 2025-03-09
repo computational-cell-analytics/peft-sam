@@ -1,9 +1,9 @@
 """The DSAD dataset contains annotations for abdominal organs in laparoscopy images.
 
-This dataset is located at https://springernature.figshare.com/articles/dataset/The_Dresden_Surgical_Anatomy_Dataset_for_abdominal_organ_segmentation_in_surgical_data_science/21702600  # noqa
+This dataset is located at https://springernature.figshare.com/articles/dataset/The_Dresden_Surgical_Anatomy_Dataset_for_abdominal_organ_segmentation_in_surgical_data_science/21702600
 The dataset is from the publication https://doi.org/10.1038/s41597-022-01719-2.
 Please cite it if you use this dataset for your research.
-"""
+"""  # noqa
 
 import os
 from glob import glob

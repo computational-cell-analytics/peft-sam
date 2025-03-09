@@ -5,7 +5,6 @@ from typing import Tuple, Union, Literal, List, Optional
 from torch.utils.data import Dataset, DataLoader
 
 import torch_em
-
 from torch_em.data.datasets import util
 from torch_em.data.datasets.light_microscopy.orgasegment import get_orgasegment_data
 

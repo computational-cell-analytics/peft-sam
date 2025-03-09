@@ -135,5 +135,7 @@ def get_ircadb_loader(
         The DataLoader.
     """
     ds_kwargs, loader_kwargs = util.split_kwargs(torch_em.default_segmentation_dataset, **kwargs)
-    dataset = get_ircadb_dataset(path, patch_shape, label_choice, split, resize_inputs, download, sample_range, **ds_kwargs)
+    dataset = get_ircadb_dataset(
+        path, patch_shape, label_choice, split, resize_inputs, download, sample_range, **ds_kwargs
+    )
     return torch_em.get_data_loader(dataset=dataset, batch_size=batch_size, **loader_kwargs)

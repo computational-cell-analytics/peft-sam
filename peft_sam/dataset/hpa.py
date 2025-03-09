@@ -4,13 +4,8 @@ from typing import List, Optional, Sequence, Tuple, Union
 
 from torch.utils.data import DataLoader, Dataset
 
+from torch_em.data.datasets import util as _util
 from torch_em import default_segmentation_dataset, get_data_loader
-from torch_em.data.datasets.util import (
-    add_instance_label_transform,
-    split_kwargs,
-    update_kwargs,
-    update_kwargs_for_resize_trafo,
-)
 from torch_em.data.datasets.light_microscopy.hpa import get_hpa_segmentation_data
 
 
@@ -47,16 +42,19 @@ def get_hpa_segmentation_dataset(
 
     get_hpa_segmentation_data(path, download, n_workers_preproc)
 
-    kwargs, _ = add_instance_label_transform(
+    kwargs, _ = _util.add_instance_label_transform(
         kwargs, add_binary_target=True, binary=binary, boundaries=boundaries, offsets=offsets
     )
 
-    kwargs, patch_shape = update_kwargs_for_resize_trafo(
-       kwargs=kwargs, patch_shape=patch_shape, resize_inputs=True, resize_kwargs={"patch_shape": patch_shape, "is_rgb": False}
+    kwargs, patch_shape = _util.update_kwargs_for_resize_trafo(
+       kwargs=kwargs,
+       patch_shape=patch_shape,
+       resize_inputs=True,
+       resize_kwargs={"patch_shape": patch_shape, "is_rgb": False},
     )
 
-    kwargs = update_kwargs(kwargs, "ndim", 2)
-    kwargs = update_kwargs(kwargs, "with_channels", True)
+    kwargs = _util.update_kwargs(kwargs, "ndim", 2)
+    kwargs = _util.update_kwargs(kwargs, "with_channels", True)
 
     if split == 'train':
         paths = glob(os.path.join(path, "train", "*.h5"))[:210]
@@ -111,9 +109,7 @@ def get_hpa_segmentation_loader(
     Returns:
        The DataLoader.
     """
-    ds_kwargs, loader_kwargs = split_kwargs(
-        default_segmentation_dataset, **kwargs
-    )
+    ds_kwargs, loader_kwargs = _util.split_kwargs(default_segmentation_dataset, **kwargs)
     dataset = get_hpa_segmentation_dataset(
         path, split, patch_shape, sample_range=sample_range,
         offsets=offsets, boundaries=boundaries, binary=binary,

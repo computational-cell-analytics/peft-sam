@@ -144,7 +144,8 @@ def get_livecell_loader(
     """
     ds_kwargs, loader_kwargs = util.split_kwargs(torch_em.default_segmentation_dataset, **kwargs)
     dataset = get_livecell_dataset(
-        path, split, patch_shape, sample_range=sample_range, download=download, offsets=offsets, boundaries=boundaries, binary=binary,
+        path, split, patch_shape, sample_range=sample_range, download=download,
+        offsets=offsets, boundaries=boundaries, binary=binary,
         cell_types=cell_types, label_path=label_path, label_dtype=label_dtype, **ds_kwargs
     )
     return torch_em.get_data_loader(dataset, batch_size, **loader_kwargs)
