@@ -1,18 +1,23 @@
 name:
     peft-sam-qlora
 channels:
-    - pytorch
-    - nvidia
     - conda-forge
 dependencies:
-    - pytorch >=2.0
-    - pytorch-cuda =11.8
+    # Note: installing the pytorch package from conda-forge will generally
+    # give you the most optmized version for your system, if you have a modern
+    # enough OS and CUDA version (CUDA >= 12). For older versions, you can
+    # specify the CUDA version by pinning libtorch.
+    # For example, add this line for a CUDA 11 version:
+    # - libtorch=*=cuda11*
+    # or, to enforce a CPU installation, change to
+    # - "pytorch=*=cpu*"
+    - pytorch >=2.4
     - torchvision
     - torchaudio
-    - micro_sam
     - natsort
     - python-xxhash
     - pycocotools
     - imagecodecs
+    - micro_sam
     - pip:
         - bitsandbytes
