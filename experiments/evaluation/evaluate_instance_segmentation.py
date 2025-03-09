@@ -39,12 +39,15 @@ def main():
     args = get_default_arguments()
 
     peft_kwargs = get_peft_kwargs(
-        args.peft_rank,
         args.peft_module,
+        args.peft_rank,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
-        quantize=args.quantize)
+        quantize=args.quantize,
+        attention_layers_to_update=args.attention_layers_to_update,
+        update_matrices=args.update_matrices,
+        )
 
     prediction_folder = run_instance_segmentation_with_decoder_inference(
         args.dataset, args.model, args.checkpoint, args.experiment_folder, peft_kwargs,

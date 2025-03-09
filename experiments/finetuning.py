@@ -70,7 +70,6 @@ def finetune_sam(args):
         optimizer_class=optimizer_class,
         peft_kwargs=peft_kwargs,
         with_segmentation_decoder=(not args.medical_imaging),
-        overwrite_training=False,
     )
 
     if args.export_path is not None:
@@ -157,8 +156,8 @@ def main():
         "--quantize", action="store_true", help="Whether to quantize the model."
     )
     parser.add_argument(
-        '--attention_layers_to_update', nargs='+', type=int, help='A list of attention blocks to update during PEFT',
-        required=True
+        '--attention_layers_to_update', default=[], nargs='+', type=int,
+        help='A list of attention blocks to update during PEFT',
     )
     parser.add_argument('--update_matrices', nargs='+', help='A list of matrices to update during LoRA')
     args = parser.parse_args()

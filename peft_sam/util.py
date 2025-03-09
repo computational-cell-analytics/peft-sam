@@ -68,8 +68,8 @@ def get_default_peft_kwargs(method: str):
         A dictionary with predefined peft arguments.
     """
     supported_peft_methods = [
-        "lora", "qlora", "fact", "attention_tuning", "adaptformer", "bias_tuning",
-        "layernorm_tuning", "ssf", "late_lora"
+        "lora", "qlora", "fact", "attention_tuning", "adaptformer",
+        "bias_tuning", "layernorm_tuning", "ssf", "late_lora",
     ]
 
     if method is None:
@@ -137,9 +137,10 @@ def get_peft_kwargs(
     Returns:
         A dictionary with all arguments and corresponding values.
     """
+    if update_matrices is None:
+        update_matrices = ["q", "v"]
     if peft_module is None:
         peft_kwargs = None
-
     else:
         if peft_module == 'lora':
             peft_kwargs = {

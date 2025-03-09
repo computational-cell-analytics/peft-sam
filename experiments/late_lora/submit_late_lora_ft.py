@@ -4,7 +4,7 @@ import subprocess
 from datetime import datetime
 import itertools
 
-DATASETS = {"hpa": "lm", "psfhs": "medical_imaging"}
+DATASETS = {"platy_cilia": "em_organelles", "hpa": "lm", "psfhs": "medical_imaging"}
 
 
 def write_batch_script(
@@ -116,8 +116,13 @@ def run_late_lora_finetuning(args):
 
             checkpoint_name = f"{model}/late_lora/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/"
             script_name = get_batch_script_names("./gpu_jobs")
+
+            if ckpt_exists(checkpoint_name, args):
+                continue
+
             if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
                 continue
+
             write_batch_script(
                 env_name="peft-sam",
                 save_root=args.save_root,

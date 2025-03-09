@@ -44,12 +44,14 @@ def main():
     start_with_box_prompt = args.box  # overwrite to start first iters' prompt with box instead of single point
 
     peft_kwargs = get_peft_kwargs(
-        peft_rank=args.peft_rank,
-        peft_module=args.peft_module,
+        args.peft_module,
+        args.peft_rank,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
         quantize=args.quantize,
+        attention_layers_to_update=args.attention_layers_to_update,
+        update_matrices=args.update_matrices,
     )
 
     # get the predictor to perform inference

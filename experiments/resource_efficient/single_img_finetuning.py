@@ -8,10 +8,23 @@ import micro_sam.training as sam_training
 from micro_sam.util import export_custom_sam_model
 
 from peft_sam.util import get_peft_kwargs
-from peft_sam.dataset.get_data_loaders import _fetch_microscopy_loaders
+from peft_sam.dataset.get_data_loaders import _fetch_microscopy_loaders, _fetch_medical_loaders
 
 # Define the sample range and rois for the selected images
 SAMPLE_DATA = {
+
+    # medical
+    "psfhs": {'train_sample_range': (0, 1), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
+    "motum": {'train_sample_range': (0, 1), 'val_sample_range': (3, 4), 'train_rois': None, 'val_rois': None},
+    "papila": {'train_sample_range': (3, 4), 'val_sample_range': (10, 11), 'train_rois': None, 'val_rois': None},
+    "jsrt": {'train_sample_range': (0, 2), 'val_sample_range': (3, 4), 'train_rois': None, 'val_rois': None},
+    "amd_sd": {'train_sample_range': (16, 17), 'val_sample_range': (31, 32), 'train_rois': None, 'val_rois': None},
+    "mice_tumseg": {'train_sample_range': (0, 1), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
+    "sega": {'train_sample_range': (2, 4), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
+    "ircadb": {'train_sample_range': (0, 1), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
+    "dsad": {'train_sample_range': (6, 8), 'val_sample_range': (1, 2), 'train_rois': None, 'val_rois': None},
+
+    # microscopy
     'covid_if': {'train_sample_range': (0, 1), 'val_sample_range': (10, 11), 'train_rois': None, 'val_rois': None},
     'livecell': {'train_sample_range': (2, 3), 'val_sample_range': (25, 26), 'train_rois': None, 'val_rois': None},
     'orgasegment': {'train_sample_range': (0, 1), 'val_sample_range': (0, 1), 'train_rois': None, 'val_rois': None},
@@ -39,7 +52,7 @@ def finetune(args):
 
     # training settings:
     model_type = args.model_type
-    checkpoint_path = None  # override this to start training from a custom checkpoint
+    checkpoint_path = args.checkpoint_path  # override this to start training from a custom checkpoint
     n_objects_per_batch = 5
     freeze_parts = args.freeze  # override this to freeze different parts of the model
     dataset = args.dataset
@@ -54,13 +67,27 @@ def finetune(args):
     else:
         checkpoint_name = f"{args.model_type}/full_ft/{dataset}_sam"
 
-    # all the stuff we need for training
+    get_data_loaders = _fetch_medical_loaders if args.medical_imaging else _fetch_microscopy_loaders
+
     train_sample_range = SAMPLE_DATA[dataset]['train_sample_range']
     val_sample_range = SAMPLE_DATA[dataset]['val_sample_range']
     train_rois = SAMPLE_DATA[dataset]['train_rois']
     val_rois = SAMPLE_DATA[dataset]['val_rois']
 
-    train_loader, val_loader = _fetch_microscopy_loaders(
+    n_images = args.n_images
+    if n_images > 1:
+        # Adjust sample ranges for resource efficient finetuning with a range of full images
+        # For now this only works for hpa and psfhs datasets
+        # TO DO: Implement a more general solution/for medical imaging
+        assert dataset in ['hpa', 'psfhs'], "Only hpa and psfhs datasets support multiple images for finetuning"
+        if dataset == "hpa":
+            train_sample_range = (1, n_images+1)
+            val_sample_range = (1, 4)  # Always use 3 validation images 
+        else:
+            train_sample_range = (0, n_images)
+            val_sample_range = (0, n_images)
+
+    train_loader, val_loader = get_data_loaders(
         dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
         train_rois=train_rois, val_rois=val_rois
     )
@@ -68,17 +95,18 @@ def finetune(args):
     n_samples_train = 50 if len(train_loader) < 50 else None
     n_samples_val = 50 if len(val_loader) < 50 else None
 
-    train_loader, val_loader = _fetch_microscopy_loaders(
+    train_loader, val_loader = get_data_loaders(
         dataset, args.input_path, train_sample_range=train_sample_range, val_sample_range=val_sample_range,
         train_rois=train_rois, val_rois=val_rois, n_train_samples=n_samples_train, n_val_samples=n_samples_val,
         batch_size=1
     )
+
     scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
     optimizer_class = torch.optim.AdamW
 
     peft_kwargs = get_peft_kwargs(
-        args.peft_rank,
         args.peft_method,
+        args.peft_rank,
         alpha=args.alpha,
         dropout=args.dropout,
         projection_size=args.projection_size,
@@ -104,6 +132,7 @@ def finetune(args):
         scheduler_kwargs=scheduler_kwargs,
         optimizer_class=optimizer_class,
         peft_kwargs=peft_kwargs,
+        with_segmentation_decoder=(not args.medical_imaging),
     )
 
     if args.export_path is not None:
@@ -167,6 +196,15 @@ def main():
     )
     parser.add_argument(
         "--checkpoint_name", type=str, default=None, help="Custom checkpoint name"
+    )
+    parser.add_argument(
+        "--n_images", type=int, default=1, help="The number of images used for finetuning."
+    )
+    parser.add_argument(
+        "--checkpoint_path", "-c", type=str, default=None, help="The path to custom checkpoint for training."
+    )
+    parser.add_argument(
+        "--medical_imaging", action="store_true", help="Flag for medical imaging datasets."
     )
     args = parser.parse_args()
     finetune(args)

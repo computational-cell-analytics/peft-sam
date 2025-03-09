@@ -145,6 +145,7 @@ def run_peft_evaluations(args):
 
     for dataset, domain in ALL_DATASETS.items():
         if args.dataset is not None and args.dataset != dataset:
+            print(f"The chosen dataset is not supported atm: '{args.dataset}'")
             continue
 
         preprocess_data(dataset)
