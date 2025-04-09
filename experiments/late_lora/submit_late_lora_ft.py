@@ -4,7 +4,29 @@ import subprocess
 from datetime import datetime
 import itertools
 
-DATASETS = {"platy_cilia": "em_organelles", "hpa": "lm", "psfhs": "medical_imaging"}
+DATASETS = {
+    # LM DATASETS
+    'covid_if': 'lm',
+    'orgasegment': 'lm',
+    'gonuclear': 'lm',
+    'hpa': 'lm',
+    'livecell': 'lm',
+
+    # EM DATASETS
+    'mitolab_glycolytic_muscle': 'em_organelles',
+    'platy_cilia': 'em_organelles',
+
+    # MEDICAL IMAGING DATASETS
+    'papila': 'medical_imaging',
+    'motum': 'medical_imaging',
+    'psfhs': 'medical_imaging',
+    'jsrt': 'medical_imaging',
+    'amd_sd': 'medical_imaging',
+    'mice_tumseg': 'medical_imaging',
+    'sega': 'medical_imaging',
+    'dsad': 'medical_imaging',
+    'ircadb': 'medical_imaging',
+}
 
 
 def write_batch_script(
@@ -29,7 +51,7 @@ def write_batch_script(
 #SBATCH -c 16
 #SBATCH --mem 64G
 #SBATCH -p grete:shared
-#SBATCH -t 2-00:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
 #SBATCH --constraint=80gb
@@ -65,9 +87,11 @@ mamba activate {env_name}
         for matrix in update_matrices:
             python_script += f"{matrix} "
 
-    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg']
+    medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg', 'sega', 'dsad', 'ircadb']
     if dataset in medical_datasets:
         python_script += "--medical_imaging "
+    
+    python_script += "-i /scratch/usr/nimcarot/data"
 
     # let's add the python script to the bash script
     batch_script += python_script
@@ -124,7 +148,7 @@ def run_late_lora_finetuning(args):
                 continue
 
             write_batch_script(
-                env_name="peft-sam",
+                env_name="peft-sam-gpu",
                 save_root=args.save_root,
                 model_type=model,
                 script_name=script_name,

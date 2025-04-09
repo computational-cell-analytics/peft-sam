@@ -4,7 +4,8 @@ import subprocess
 import itertools
 from datetime import datetime
 
-DATASETS = {"hpa": "lm", "psfhs": "medical_imaging"}
+from submit_late_lora_ft import DATASETS
+
 EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
 ALL_SCRIPTS = ["evaluate_instance_segmentation", "iterative_prompting"]
 
@@ -28,7 +29,7 @@ def write_batch_script(
 #SBATCH -c 16
 #SBATCH --mem 64G
 #SBATCH -p grete:shared
-#SBATCH -t 2-00:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
 #SBATCH --job-name={inference_setup}
@@ -136,7 +137,7 @@ def run_peft_evaluations(args):
         os.makedirs(result_path, exist_ok=True)
         for current_setup in SCRIPTS:
             write_batch_script(
-                env_name="peft-sam-qlora",
+                env_name="peft-sam-gpu",
                 out_path=get_batch_script_names(tmp_folder),
                 inference_setup=current_setup,
                 checkpoint=checkpoint_path,
@@ -151,20 +152,19 @@ def run_peft_evaluations(args):
         ):
             if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
                 continue
-
             # late lora and partial freezing
             checkpoint = f"{experiment_folder}/checkpoints/{model}/late_lora/{method}/"
             checkpoint += f"{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
-            if method == "ClassicalSurgery":
-                continue
 
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
             result_path = os.path.join(experiment_folder, method, update_matrix, f"start_{layers[0]}", dataset)
+            if os.path.exists(os.path.join(result_path, "results")):
+                continue
             os.makedirs(result_path, exist_ok=True)
-
+            scripts = ["iterative_prompting"] if domain == "medical_imaging" else ALL_SCRIPTS
             for current_setup in ALL_SCRIPTS:
                 write_batch_script(
-                    env_name="peft-sam",
+                    env_name="peft-sam-gpu",
                     out_path=get_batch_script_names(tmp_folder),
                     inference_setup=current_setup,
                     checkpoint=checkpoint,
