@@ -41,6 +41,8 @@ def write_batch_script(
     peft_rank=None,
     attention_layers_to_update=[],
     update_matrices=[],
+    freeze=None,
+    quantize=False,
     dry=False,
 ):
     assert model_type in ["vit_b", "vit_l", "vit_h", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]
@@ -74,9 +76,10 @@ mamba activate {env_name}
 
     if save_root is not None:
         python_script += f"-s {save_root} "  # path to save model checkpoints and logs
-
-    python_script += f"--peft_rank {peft_rank} "
-    python_script += f"--peft_method {peft_method} "
+    if peft_rank is not None:
+        python_script += f"--peft_rank {peft_rank} "
+    if peft_method is not None:
+        python_script += f"--peft_method {peft_method} "
     if attention_layers_to_update:
         python_script += "--attention_layers_to_update "
         for layer in attention_layers_to_update:
@@ -86,11 +89,15 @@ mamba activate {env_name}
         python_script += "--update_matrices "
         for matrix in update_matrices:
             python_script += f"{matrix} "
+    if freeze is not None:
+        python_script += f"--freeze {freeze} "
+    if quantize:
+        python_script += f"--quantize "
 
     medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg', 'sega', 'dsad', 'ircadb']
     if dataset in medical_datasets:
         python_script += "--medical_imaging "
-    
+
     python_script += "-i /scratch/usr/nimcarot/data"
 
     # let's add the python script to the bash script
@@ -122,11 +129,12 @@ def ckpt_exists(ckpt_name, args):
 
 def run_late_lora_finetuning(args):
 
-    update_matrices = {'standard': ["q", "v"], 'all_matrices': ["q", "k", "v", "mlp"]}
-    attention_layers_to_update = [[6, 7, 8, 9, 10, 11], [9, 10, 11], [11]]
-    peft_methods = ["lora", "ClassicalSurgery"]
+    # get experiment settings
+    datasets, peft_methods, attention_layers_to_update, update_matrices = get_experiment_setting(args)
 
-    for dataset in DATASETS.keys():
+    for dataset in datasets:
+        if args.dataset is not None and dataset != args.dataset:
+            continue
         domain = DATASETS[dataset]
         model = f"vit_b_{domain}"
         if model == "vit_b_lm":
@@ -135,6 +143,20 @@ def run_late_lora_finetuning(args):
         else:
             checkpoint_path = None
 
+        if not args.best_setting:
+            # freeze encoder
+            checkpoint_name = f"{model}/late_lora/ClassicalSurgery/standard/start_12/{dataset}_sam/"
+            write_batch_script(
+                env_name="peft-sam-gpu",
+                save_root=args.save_root,
+                model_type=model,
+                checkpoint_name=checkpoint_name,
+                script_name=get_batch_script_names("./gpu_jobs"),
+                checkpoint_path=checkpoint_path,
+                dataset=dataset,
+                freeze="image_encoder",
+                dry=args.dry,
+            )
         for method, layers, update_matrix in itertools.product(peft_methods, attention_layers_to_update,
                                                                update_matrices.keys()):
 
@@ -144,23 +166,49 @@ def run_late_lora_finetuning(args):
             if ckpt_exists(checkpoint_name, args):
                 continue
 
-            if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
+            if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v", "k", "mlp"]:
                 continue
-
+            
+            if method == 'qlora':
+                _method = 'lora'
+                quantize = True
+                env_name = "peft-sam-qlora"
+            else:
+                _method = method
+                quantize = False
+                env_name = "peft-sam-gpu"
+            
             write_batch_script(
-                env_name="peft-sam-gpu",
+                env_name=env_name,
                 save_root=args.save_root,
                 model_type=model,
                 script_name=script_name,
                 checkpoint_path=checkpoint_path,
                 checkpoint_name=checkpoint_name,
                 dataset=dataset,
-                peft_method=method,
+                peft_method=_method,
                 peft_rank=32,
                 attention_layers_to_update=layers,
                 update_matrices=update_matrices[update_matrix],
+                quantize=quantize,
                 dry=args.dry,
             )
+
+def get_experiment_setting(args):
+
+    if args.best_setting:
+        datasets = ["hpa", "psfhs"]
+        methods = ["lora", "ClassicalSurgery", "qlora"]
+        attention_layers_to_update = [[6, 7, 8, 9, 10, 11]]
+        update_matrices = {'all_matrices': ["q", "v", "k", "mlp"]}
+    else:
+        datasets = DATASETS.keys()
+        update_matrices = {'standard': ["q", "v"], 'all_matrices': ["q", "k", "v", "mlp"]}
+        attention_layers_to_update = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [6, 7, 8, 9, 10, 11], [9, 10, 11], [11]]
+        methods = ["lora", "ClassicalSurgery"]
+
+    return datasets, methods, attention_layers_to_update, update_matrices
+
 
 
 def main(args):
@@ -179,7 +227,9 @@ if __name__ == "__main__":
         "-s", "--save_root", type=str, default="/scratch/usr/nimcarot/sam/experiments/peft",
         help="Path to the directory where the model checkpoints are stored."
     )
+    parser.add_argument("--dataset", type=str, default=None, help="Dataset to use for finetuning.")
     parser.add_argument("--dry", action="store_true")
+    parser.add_argument("--best_setting", action="store_true", help="Use the only the best late lora setting for finetuning.")
 
     args = parser.parse_args()
     main(args)
