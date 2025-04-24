@@ -111,6 +111,8 @@ def finetune(args):
         dropout=args.dropout,
         projection_size=args.projection_size,
         quantize=args.quantize,
+        attention_layers_to_update=args.attention_layers_to_update,
+        update_matrices=args.update_matrices,
     )
     print("PEFT arguments: ", peft_kwargs)
 
@@ -205,6 +207,12 @@ def main():
     )
     parser.add_argument(
         "--medical_imaging", action="store_true", help="Flag for medical imaging datasets."
+    )
+    parser.add_argument(
+        "--attention_layers_to_update", type=int, nargs="+", default=None,
+    )
+    parser.add_argument(
+        "--update_matrices", type=str, nargs="+", default=None,
     )
     args = parser.parse_args()
     finetune(args)

@@ -50,6 +50,8 @@ class RawTrafo:
             assert raw.shape[-2:] == self.desired_shape[-2:], raw.shape
 
         if self.triplicate_dims:
+            if raw.shape[-1] == 3:
+                raw = raw.permute(2, 0, 1)
             if raw.ndim == 3 and raw.shape[0] == 1:
                 raw = np.concatenate((raw, raw, raw), axis=0)
             if raw.ndim == 2:
