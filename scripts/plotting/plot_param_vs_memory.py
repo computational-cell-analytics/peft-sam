@@ -5,24 +5,32 @@ import numpy as np
 
 
 HPA_MAP = {
-    "Full FT": [50.57, 104.76],
-    "LoRA": [49.31, 16.27],
-    "Freeze Encoder": [37.38, 15.09],
-    "Late-LoRA (C-50%)": [43.93, 15.68],
-    "Late-LoRA (A-50%)": [43.66, 17.45],
-    "Late-LoRA (C-25%)": [40.98, 15.29],
-    "Late-LoRA (A-25%)": [40.66, 16.27],
-    "Late-LoRA (C-8%)": [40.26, 15.19],
-    "Late-LoRA (A-8%)": [40.45, 15.49],
-    "Late-FT (50%)": [43.67, 57.67],
-    "Late-FT (25%)": [40.92, 36.38],
-    "Late-FT (8%)": [40.52, 22.2],
+    "Full FT": [51.01, 104.76],
+    "LoRA": [49.71, 16.27],
+    "Freeze Encoder": [37.68, 15.09],
+    "QLoRA": [49.91, 16.27],
+    "Late-LoRA (C-50%)": [44.43, 15.68],
+    "Late-LoRA (A-50%)": [44.03, 17.45],
+    "Late-LoRA (C-25%)": [40.86, 15.29],
+    "Late-LoRA (A-25%)": [40.93, 16.27],
+    "Late-LoRA (C-8%)": [40.80, 15.19],
+    "Late-LoRA (A-8%)": [40.69, 15.49],
+    "Late-FT (50%)": [44.15, 57.67],
+    "Late-FT (25%)": [40.95, 36.38],
+    "Late-FT (8%)": [40.77, 22.2],
+    "Late-QLoRA (C-50%)": [44.47, 15.68],
+    "Late-QLoRA (A-50%)": [44.41, 17.45],
+    "Late-QLoRA (C-25%)": [40.96, 15.39],
+    "Late-QLoRA (A-25%)": [40.94, 16.27],
+    "Late-QLoRA (C-8%)": [40.69, 15.19],
+    "Late-QLoRA (A-8%)": [40.66, 15.49],
 }
 
 PSFHS_MAP = {
     "Full FT": [20.49, 93.74],
-    "LoRA": [19.59, 4.06],
-    "Freeze Encoder": [7.64, 5.24],
+    "LoRA": [19.59, 5.24],
+    "Freeze Encoder": [7.64, 4.06],
+    "QLoRA": [19.92, 5.24],
     "Late-LoRA (C-50%)": [14.22, 4.65],
     "Late-LoRA (A-50%)": [13.9, 6.42],
     "Late-LoRA (C-25%)": [10.54, 4.36],
@@ -32,6 +40,12 @@ PSFHS_MAP = {
     "Late-FT (50%)": [13.87, 46.64],
     "Late-FT (25%)": [10.64, 25.35],
     "Late-FT (8%)": [9.81, 11.17],
+    "Late-QLoRA (C-50%)": [14.46, 4.65],
+    "Late-QLoRA (A-50%)": [14.54, 6.42],
+    "Late-QLoRA (C-25%)": [11.24, 4.36],
+    "Late-QLoRA (A-25%)": [11.25, 5.24],
+    "Late-QLoRA (C-8%)": [9.82, 4.16],
+    "Late-QLoRA (A-8%)": [9.85, 4.46],
 }
 
 
@@ -53,6 +67,9 @@ def _plot_param_vs_mem(dataset):
     non_text_points = []
 
     for (label, (memory, params)), color in zip(maps.items(), colors):
+        # HACK: Change GiB to GB
+        memory = memory * 1.07374
+
         if "Late" in label:
             non_text_points.append((memory, params, label, color))
             plt.scatter(memory, params, color=color, alpha=0.7)
