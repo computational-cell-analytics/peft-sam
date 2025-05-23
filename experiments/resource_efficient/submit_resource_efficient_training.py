@@ -4,12 +4,13 @@ import subprocess
 from datetime import datetime
 import itertools
 
-# ALL_DATASETS = 'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-#                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
-ALL_DATASETS = {'motum': 'medical_imaging', 'papila': 'medical_imaging', 'jsrt': 'medical_imaging',
-                'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
-                'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging',
-                }
+ALL_DATASETS = {
+    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+    'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
+    'motum': 'medical_imaging', 'papila': 'medical_imaging', 'jsrt': 'medical_imaging',
+    'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
+    'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging',
+}
 
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
@@ -140,7 +141,7 @@ def run_peft_finetuning(args, datasets, n_images=1):
             if not cpkt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="peft-sam-gpu",
+                    env_name="peft-sam-qlora",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -155,7 +156,7 @@ def run_peft_finetuning(args, datasets, n_images=1):
             if not cpkt_exists(checkpoint_name, args):
                 script_name = get_batch_script_names("./gpu_jobs")
                 write_batch_script(
-                    env_name="peft-sam-gpu",
+                    env_name="peft-sam-qlora",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -175,7 +176,7 @@ def run_peft_finetuning(args, datasets, n_images=1):
                 if cpkt_exists(checkpoint_name, args):
                     continue
                 write_batch_script(
-                    env_name="peft-sam-gpu",
+                    env_name="peft-sam-qlora",
                     save_root=args.save_root,
                     model_type=model,
                     script_name=script_name,
@@ -187,30 +188,27 @@ def run_peft_finetuning(args, datasets, n_images=1):
                     n_images=n_images,
                     dry=args.dry
                 )
-            
             # Late LoRA, late QLoRA and late unfreezing
-                
+               
             update_matrices = {'all_matrices': ["q", "k", "v", "mlp"]}
             attention_layers_to_update = [[6, 7, 8, 9, 10, 11]]
             peft_methods = ["qlora", "lora", "ClassicalSurgery"]
             
             for method, layers, update_matrix in itertools.product(peft_methods, attention_layers_to_update, update_matrices):
-                if model == "vit_b": 
-                    continue
                 checkpoint_name = f"{model}/late_lora/{n_images}_imgs/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/"
                 script_name = get_batch_script_names("./gpu_jobs")
 
                 if cpkt_exists(checkpoint_name, args):
                     continue
-                
-                if method == 'quantize':
+
+                if method == 'qlora':
                     _method = 'lora'
                     quantize = True
                     env_name = "peft-sam-qlora"
                 else:
                     _method = method
                     quantize = False
-                    env_name = "peft-sam-gpu"
+                    env_name = "peft-sam-qlora"
 
                 write_batch_script(
                     env_name=env_name,

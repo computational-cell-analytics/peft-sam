@@ -5,13 +5,11 @@ from datetime import datetime
 import itertools
 from micro_sam.util import export_custom_qlora_model
 
-# ALL_DATASETS = {
-#    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-#    'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
-    # medical
-
 ALL_DATASETS = {
-    'motum': 'medical_imaging', 'papila': 'medical_imaging', #'jsrt': 'medical_imaging',
+    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+    'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
+    # medical
+    'motum': 'medical_imaging', 'papila': 'medical_imaging', 'jsrt': 'medical_imaging',
     'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
     'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging'
 }
@@ -177,7 +175,7 @@ def run_peft_evaluations(args, datasets, n_images):
                 os.makedirs(result_path, exist_ok=True)
                 for current_setup in SCRIPTS:
                     write_batch_script(
-                        env_name="peft-sam-gpu",
+                        env_name="peft-sam-qlora",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
@@ -194,7 +192,7 @@ def run_peft_evaluations(args, datasets, n_images):
                 os.makedirs(result_path, exist_ok=True)
                 for current_setup in SCRIPTS:
                     write_batch_script(
-                        env_name="peft-sam-gpu",
+                        env_name="peft-sam-qlora",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
@@ -209,9 +207,14 @@ def run_peft_evaluations(args, datasets, n_images):
 
                 # Export custom QLoRA model
                 if peft_method == "qlora":
-                    inference_checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/lora/{n_images}_imgs/{dataset}_sam/for_inference/best.pt"
+                    inference_checkpoint = f"{EXPERIMENT_ROOT}{os.path.split(checkpoint)[0]}/for_inference/best.pt"
                     os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
-                    export_custom_qlora_model(None, checkpoint, model, inference_checkpoint)
+                    export_custom_qlora_model(
+                        checkpoint_path=None,
+                        finetuned_path=checkpoint,
+                        model_type=model,
+                        save_path=inference_checkpoint
+                    )
                     checkpoint = inference_checkpoint
 
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
@@ -223,7 +226,7 @@ def run_peft_evaluations(args, datasets, n_images):
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 for current_setup in SCRIPTS:
                     write_batch_script(
-                        env_name="peft-sam-gpu",
+                        env_name="peft-sam-qlora",
                         out_path=get_batch_script_names(tmp_folder),
                         inference_setup=current_setup,
                         checkpoint=checkpoint,
@@ -241,8 +244,8 @@ def run_peft_evaluations(args, datasets, n_images):
             peft_methods = ["qlora", "lora", "ClassicalSurgery"]
 
             for method, layers, update_matrix in itertools.product(peft_methods, attention_layers_to_update, update_matrices.keys()):
-                if model == "vit_b":
-                    continue
+                # if model == "vit_b":
+                #    continue
                 checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/late_lora/{n_images}_imgs/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
                 script_name = get_batch_script_names("./gpu_jobs")
 
@@ -250,17 +253,25 @@ def run_peft_evaluations(args, datasets, n_images):
                     _method = 'lora'
                     quantize = True
                     env_name = "peft-sam-qlora"
-                    checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/late_lora/qlora/{n_images}_imgs/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/for_inference/best.pt"
+                    checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/late_lora/{n_images}_imgs/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
+                    inference_checkpoint = f"{EXPERIMENT_ROOT}/{os.path.split(checkpoint)[0]}/for_inference/best.pt"
+                    os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
+                    export_custom_qlora_model(
+                        checkpoint_path=None,
+                        finetuned_path=checkpoint,
+                        model_type=model,
+                        save_path=inference_checkpoint
+                    )
+                    checkpoint = inference_checkpoint
                 else:
                     _method = method
                     quantize = False
-                    env_name = "peft-sam-gpu"
+                    env_name = "peft-sam-qlora"
                 
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
-                result_path = os.path.join(EXPERIMENT_ROOT, method, model, f"{n_images}_img", update_matrix, f"start_{layers[0]}", dataset)
+                result_path = os.path.join(EXPERIMENT_ROOT, "late_lora", method, model, f"{n_images}_img", update_matrix, f"start_{layers[0]}", dataset)
                 if os.path.exists(os.path.join(result_path, "results")):
                     continue
-                os.makedirs(result_path, exist_ok=True)
 
                 for current_setup in SCRIPTS:
                     write_batch_script(
@@ -287,7 +298,7 @@ def main(args):
     if args.single_img:
         run_peft_evaluations(args, ALL_DATASETS, n_images=1)
     elif args.data_scaling:
-        n_images = [2, 5, 10]
+        n_images = [1, 2, 5, 10]
         datasets = {"hpa": "lm", "psfhs": "medical_imaging"}
         for n in n_images:
             run_peft_evaluations(args, datasets, n_images=n)

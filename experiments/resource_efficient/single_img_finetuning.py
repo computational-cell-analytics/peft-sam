@@ -101,7 +101,7 @@ def finetune(args):
         batch_size=1
     )
 
-    scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
+    scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10}
     optimizer_class = torch.optim.AdamW
 
     peft_kwargs = get_peft_kwargs(

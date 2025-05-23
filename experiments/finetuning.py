@@ -38,7 +38,7 @@ def finetune_sam(args):
     get_loaders = _fetch_medical_loaders if args.medical_imaging else _fetch_microscopy_loaders
     train_loader, val_loader = get_loaders(dataset, args.input_path)
 
-    scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10, "verbose": True}
+    scheduler_kwargs = {"mode": "min", "factor": 0.9, "patience": 10}
     optimizer_class = torch.optim.AdamW
     peft_kwargs = get_peft_kwargs(
         peft_rank=args.peft_rank,
@@ -51,6 +51,7 @@ def finetune_sam(args):
         update_matrices=args.update_matrices,
     )
     print("PEFT arguments: ", peft_kwargs)
+    print("Finetuning on: ", dataset)
 
     # Run training.
     sam_training.train_sam(

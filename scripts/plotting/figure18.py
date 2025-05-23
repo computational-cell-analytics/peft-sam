@@ -162,6 +162,7 @@ def plot_late_lora(data, domain="medical"):
     fig.tight_layout(rect=[0.01, 0.02, 0.99, 0.99])  # Adjust space for the legend
 
     plt.savefig(f'../../results/figures/figure18_{domain}.png', dpi=300)
+    plt.savefig(f'../../results/figures/figure18_{domain}.pdf')
 
 
 def main():

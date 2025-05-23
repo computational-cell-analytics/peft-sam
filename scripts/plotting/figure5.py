@@ -141,7 +141,7 @@ def plot_late_lora(data):
     plt.tight_layout()
     fig.tight_layout(rect=[0.01, 0.05, 0.99, 0.99])  # Adjust space for the legend
 
-    plt.savefig('../../results/figures/figure5.png', dpi=300)
+    plt.savefig('../../results/figures/figure5.svg', dpi=300)
 
 
 def main():

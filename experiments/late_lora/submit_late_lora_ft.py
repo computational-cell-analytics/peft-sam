@@ -58,6 +58,8 @@ def write_batch_script(
 #SBATCH -A nim00007
 #SBATCH --constraint=80gb
 #SBATCH --job-name=finetune-sam
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=carolin.teuber@stud.uni-goettingen.de
 
 source ~/.bashrc
 mamba activate {env_name}
@@ -143,7 +145,7 @@ def run_late_lora_finetuning(args):
         else:
             checkpoint_path = None
 
-        if not args.best_setting:
+        if not args.specific:
             # freeze encoder
             checkpoint_name = f"{model}/late_lora/ClassicalSurgery/standard/start_12/{dataset}_sam/"
             write_batch_script(
@@ -166,9 +168,6 @@ def run_late_lora_finetuning(args):
             if ckpt_exists(checkpoint_name, args):
                 continue
 
-            if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v", "k", "mlp"]:
-                continue
-            
             if method == 'qlora':
                 _method = 'lora'
                 quantize = True
@@ -176,7 +175,7 @@ def run_late_lora_finetuning(args):
             else:
                 _method = method
                 quantize = False
-                env_name = "peft-sam-gpu"
+                env_name = "peft-sam-qlora"
             
             write_batch_script(
                 env_name=env_name,
@@ -197,10 +196,22 @@ def run_late_lora_finetuning(args):
 def get_experiment_setting(args):
 
     if args.best_setting:
-        datasets = ["hpa", "psfhs"]
+        datasets = DATASETS.keys()
         methods = ["lora", "ClassicalSurgery", "qlora"]
         attention_layers_to_update = [[6, 7, 8, 9, 10, 11]]
         update_matrices = {'all_matrices': ["q", "v", "k", "mlp"]}
+    elif args.qlora_only:
+        datasets = ["hpa", "psfhs"]
+        methods = ["qlora"]
+        attention_layers_to_update = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [6, 7, 8, 9, 10, 11], [9, 10, 11], [11]]
+        update_matrices = {'standard': ["q", "v"], 'all_matrices': ["q", "k", "v", "mlp"]}
+    elif args.specific:
+        # for table 6-7
+        datasets = ["livecell"]
+        methods = ["lora", "qlora"]
+        attention_layers_to_update = [[6, 7, 8, 9, 10, 11]]
+        update_matrices = {'all_matrices': ["q", "k", "v", "mlp"]}
+
     else:
         datasets = DATASETS.keys()
         update_matrices = {'standard': ["q", "v"], 'all_matrices': ["q", "k", "v", "mlp"]}
@@ -230,6 +241,8 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default=None, help="Dataset to use for finetuning.")
     parser.add_argument("--dry", action="store_true")
     parser.add_argument("--best_setting", action="store_true", help="Use the only the best late lora setting for finetuning.")
+    parser.add_argument("--qlora_only", action="store_true", help="Use only qlora for finetuning.")
+    parser.add_argument("--specific", action="store_true", help="Use only the specific setting for finetuning.")
 
     args = parser.parse_args()
     main(args)
