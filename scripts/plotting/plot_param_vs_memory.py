@@ -67,6 +67,9 @@ def _plot_param_vs_mem(dataset):
     non_text_points = []
 
     for (label, (memory, params)), color in zip(maps.items(), colors):
+        # HACK: Change GiB to GB
+        memory = memory * 1.07374
+
         if "Late" in label:
             non_text_points.append((memory, params, label, color))
             plt.scatter(memory, params, color=color, alpha=0.7)
