@@ -33,6 +33,7 @@ MODALITY_MAPPING = {
     "lora": "LoRA",
     "adaptformer": "AdaptFormer",
     "AttentionSurgery": "Attn Tune",
+    "ClassicalSurgery": "Late Ft",
     "full_ft": "Full Ft",
 }
 
@@ -63,41 +64,33 @@ def prepare_medical_data(df_sam, def_medico):
     return df
 
 
-def extract_training_times(checkpoint_paths):
-    """
-    Extracts training times from the state dictionaries of a list of checkpoints.
-
-    Args:
-        checkpoint_paths (list of str): List of paths to checkpoint files.
-
-    Returns:
-        pd.DataFrame: DataFrame with columns ['Checkpoint', 'TrainingTime'].
-    """
+def add_late_data(root, domain):
     data = []
+    dataset_mapping = MEDICO_DATASET_MAPPING if domain == "medical" else MICROSCOPY_DATASET_MAPPING
+    methods = ["ClassicalSurgery"]
+    for dataset in dataset_mapping.keys():
+        gen_model = "vit_b_medical_imaging" if domain == "medical" else "vit_b_lm"
+        gen_model = "vit_b_em_organelles" if dataset in ["mitolab_glycolytic_muscle", "platy_cilia"] else gen_model
+        for model in ["vit_b", gen_model]:
+            for method in methods:
+                path = os.path.join(root, "checkpoints", model, "late_lora", method, "all_matrices", "start_6", f"{dataset}_sam", "best.pt")
 
-    for path in checkpoint_paths:
-        print(path)
-        if path.find('cellseg1') != -1 or path.find('for_inference') != -1:
-            continue
-        model = path.split('/')[-4]
-        method = MODALITY_MAPPING[path.split('/')[-3]]
-        dataset = MICROSCOPY_DATASET_MAPPING['_'.join(path.split('/')[-2].split('_')[:-1])]
-        try:
-            # Load checkpoint
-            checkpoint = torch.load(path, map_location='cpu')
-            training_time = checkpoint.get('train_time', None)
+            try:
+                # Load checkpoint
+                checkpoint = torch.load(path, weights_only=False)
+                training_time = checkpoint.get('train_time', None)
+                if domain == "microscopy":
+                    base_model = "SAM" if model == "vit_b" else r"$\mu$SAM"
+                else:
+                    base_model = "MedicoSAM" if model == "vit_b_medical_imaging" else "SAM"
 
-            base_model = "SAM" if model == "vit_b" else r"$\mu$SAM"
-
-            if training_time is not None:
-                data.append({'model': base_model, 'method': method, 'dataset': dataset, 'train_time': training_time})
-            else:
-                print(f"Warning: 'training_time' not found in {path}")
-        except Exception as e:
-            print(f"Error loading checkpoint {path}: {e}")
-
+                if training_time is not None:
+                    data.append({'model': base_model, 'method': MODALITY_MAPPING[method], 'dataset': dataset_mapping[dataset], 'train_time': training_time})
+                else:
+                    print(f"Warning: 'training_time' not found in {path}")
+            except Exception as e:
+                print(f"Error loading checkpoint {path}: {e}")
     return pd.DataFrame(data)
-
 
 def barplot(df, is_medical=False):
     if is_medical:
@@ -162,27 +155,38 @@ def barplot(df, is_medical=False):
     # Adjust layout
     fig.tight_layout(rect=[0, 0.05, 1, 0.98])  # Adjust space for the legend
     if is_medical:
-        plt.savefig('../../results/figures/medical_training_times_v2.pdf', dpi=300)
+        plt.savefig('../../results/figures/figure11.pdf', dpi=300)
     else:
-        plt.savefig('../../results/figures/training_times_v2.pdf', dpi=300)
+        plt.savefig('../../results/figures/figure10.pdf', dpi=300)
+
 
 
 def main():
-    checkpoint_paths = glob(os.path.join(ROOT, 'checkpoints', '**', 'best.pt'), recursive=True)
 
-    # Extract training times
+    # late_data = add_late_data(ROOT, "microscopy")
+    # training_times_microscopy = pd.read_csv('../../results/training_times_microscopy.csv')
 
-    if not os.path.exists('../../results/training_times.csv'):
-        df = extract_training_times(checkpoint_paths)
-        df.to_csv('../../results/training_times.csv')
+    # Combine the late data with the main training times
+    # training_times_microscopy = pd.concat([training_times_microscopy, late_data], axis=0, ignore_index=True)
+    # Save the combined dataframe
+    # training_times_microscopy.to_csv('../../results/training_times_microscopy.csv', index=False)
 
-    df = pd.read_csv('../../results/training_times.csv')
-    barplot(df)
+    # Load the main results
+    training_times_microscopy = pd.read_csv('../../results/training_times_microscopy.csv')
+    barplot(training_times_microscopy)
 
-    medical_sam_df = pd.read_csv('../../results/medical_imaging_peft_best_times_vit_b.csv')
-    medical_medico_sam_df = pd.read_csv('../../results/medical_imaging_peft_best_times_vit_b_medical_imaging.csv')
+    # medical_sam_df = pd.read_csv('../../results_depricated/medical_imaging_peft_best_times_vit_b.csv')
+    # medical_medico_sam_df = pd.read_csv('../../results_depricated/medical_imaging_peft_best_times_vit_b_medical_imaging.csv')
 
-    medical_df = prepare_medical_data(medical_sam_df, medical_medico_sam_df)
+    # medical_df = prepare_medical_data(medical_sam_df, medical_medico_sam_df)
+    # late_data = add_late_data(ROOT, "medical")
+    # Combine the late data with the main training times
+    # medical_df = pd.concat([medical_df, late_data], axis=0, ignore_index=True)
+
+    # Save the combined dataframe
+    # medical_df.to_csv('../../results/training_times_medical.csv', index=False)
+
+    medical_df = pd.read_csv('../../results/training_times_medical.csv')
     barplot(medical_df, is_medical=True)
 
 

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.colors as mcolors
 import os
+import itertools
 
 MICROSCOPY_DATASET_MAPPING = {
     "covid_if": "Covid-IF",
@@ -32,7 +33,7 @@ def get_cellseg1(dataset, model):
     dataset = reverse_mapping[dataset]
     model = model.replace(r"$\mu$SAM", "vit_b_em_organelles") if dataset in ["mitolab_glycolytic_muscle", "platy_cilia"] else model.replace(r"$\mu$SAM", "vit_b_lm")
     model = model.replace("SAM", "vit_b")
-    data_path = f"/scratch-emmy/usr/nimcarot/peft/cellseg1/{model}/{dataset}/results/amg_opt.csv"
+    data_path = f"/mnt/lustre-grete/usr/u12094/experiments/peft/cellseg1/{model}/{dataset}/results/amg_opt.csv"
     amg = 0
     if os.path.exists(data_path):
         df = pd.read_csv(data_path)
@@ -61,6 +62,9 @@ def create_barplot(df, medical=False):
         "freeze_encoder": "Freeze Encoder",
         "lora": "LoRA",
         "qlora": "QLoRA",
+        "lora_late": "Late LoRA",
+        "qlora_late": "Late QLoRA",
+        "ClassicalSurgery_late": "Late Ft",
         "full_ft": "Full Ft",
     }
     df['modality'] = df['modality'].replace(modality_mapping)
@@ -73,14 +77,12 @@ def create_barplot(df, medical=False):
 
     custom_palette = {
         "ais": "#045275",
-        "point": "#7CCBA2",
-        "box": "#90477F",
-        "ip": "#089099",
-        "ib": "#F0746E",
+        "single point": "#7CCBA2",
+        "single box": "#90477F",
     }
     base_colors = list(custom_palette.values())
     custom_palette = {benchmark: (base_colors[i], mcolors.to_rgba(base_colors[i], alpha=0.5))
-                      for i, benchmark in enumerate(['ais', 'ip', 'ib', 'single box', 'single point'])}
+                      for i, benchmark in enumerate(['ais', 'single point', 'single box'])}
 
     # Metrics to plot
     # metrics = ['ais', 'single point', 'ip', 'single box', 'ib']
@@ -103,10 +105,10 @@ def create_barplot(df, medical=False):
     hatches = {
         'SAM': '',
         r'$\mu$SAM': '///',
-        'MedicoSAM': '\\\\'
+        'MedicoSAM': '\\\\\\'
     }
     # Create subplots for each dataset
-    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(10, 15), constrained_layout=True)
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(12, 15), constrained_layout=True)
     axes = axes.flatten()
     for i, dataset in enumerate(datasets):
         ax = axes[i]
@@ -153,7 +155,7 @@ def create_barplot(df, medical=False):
 
         ax.set_title(f"{dataset}", fontsize=15)
         ax.set_xticks([p + 0.35 for p in x_positions])
-        ax.tick_params(axis='x', rotation=45)
+        ax.tick_params(axis='x', rotation=90)
         ax.set_xticklabels(modalities, ha='center', fontsize=13)
 
     # Updated legend with hatching and horizontal lines
@@ -161,7 +163,7 @@ def create_barplot(df, medical=False):
     model_legend = [
         Patch(facecolor='white', edgecolor='black', hatch=None, label="SAM"),
         Patch(facecolor='white', edgecolor='black', hatch='///', label=r"$\mu$SAM"),
-        Patch(facecolor='white', edgecolor='black', hatch='\\\\', label="MedicoSAM"),
+        Patch(facecolor='white', edgecolor='black', hatch='\\\\\\', label="MedicoSAM"),
     ]
     line_legend = [
         Line2D([0], [0], color='black', linestyle='-', label="CellSeg1 - SAM"),
@@ -179,24 +181,84 @@ def create_barplot(df, medical=False):
     # )
     fig.tight_layout(rect=[0.05, 0.03, 1, 0.98])  # Adjust space for the legend
     if medical:
-        plt.text(x=-9.5, y=0.74, s="Dice Similarity Coefficient", rotation=90, fontweight="bold", fontsize=18)
+        plt.text(x=-15.5, y=0.74, s="Dice Similarity Coefficient", rotation=90, fontweight="bold", fontsize=18)
     else:
-        plt.text(x=-10.5, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
+        plt.text(x=-16.5, y=0.55, s="Mean Segmentation Accuracy", rotation=90, fontweight="bold", fontsize=18)
 
     domain = "medical" if medical else "microscopy"
-    plt.savefig(f"../../results/figures/single_img_training_{domain}.svg", dpi=300)
-    plt.savefig(f"../../results/figures/single_img_training_{domain}.png", dpi=300)
+    plt.savefig(f"../../results/figures/figure4_{domain}.svg", dpi=300)
+    plt.savefig(f"../../results/figures/figure4_{domain}.png", dpi=300)
 
     legend_fig = plt.figure()
     legend_ax = legend_fig.add_axes([0, 0, 1, 1])
     legend_ax.legend(handles, labels, ncol=11, fontsize=13)
     legend_ax.axis('off')
-    legend_fig.savefig('../../results/figures/single_image_legend.svg', bbox_inches='tight')
+    legend_fig.savefig('../../results/figures/figure4_legend.svg', bbox_inches='tight')
+
+
+def add_late_data(root, domain):
+
+    results = []
+    datasets = MEDICO_DATASET_MAPPING.keys() if domain == "medical" else MICROSCOPY_DATASET_MAPPING.keys()
+    modalities = ["lora", "qlora", "ClassicalSurgery"]
+    for dataset, modality in itertools.product(datasets, modalities):
+        gen_model = "vit_b_medical_imaging" if domain == "medical" else "vit_b_lm"
+        gen_model = "vit_b_em_organelles" if dataset in ["mitolab_glycolytic_muscle", "platy_cilia"] else gen_model
+        for model in ["vit_b", gen_model]:
+            result_dir = os.path.join(root, "late_lora", modality, model, "1_img", "all_matrices", "start_6", dataset, "results")
+
+            instance_segmentation_file = os.path.join(result_dir, "instance_segmentation_with_decoder.csv")
+            iterative_start_box_file = os.path.join(result_dir, "iterative_prompting_without_mask", "iterative_prompts_start_box.csv")
+            iterative_start_point_file = os.path.join(result_dir, "iterative_prompting_without_mask", "iterative_prompts_start_point.csv")
+            # Initialize values to None
+            ais, single_box, single_point, ib, ip = None, None, None, None, None
+
+            # Extract 'ais' from instance_segmentation_with_decoder.csv
+            if os.path.exists(instance_segmentation_file):
+                instance_df = pd.read_csv(instance_segmentation_file)
+                ais = instance_df["mSA"].iloc[0] if "mSA" in instance_df.columns else None
+
+            # Extract values for 'iterative_prompts_start_box.csv' (single box and ib)
+            if os.path.exists(iterative_start_box_file):
+                box_df = pd.read_csv(iterative_start_box_file)
+                single_box = box_df["mSA"].iloc[0] if not box_df.empty else None
+                ib = box_df["mSA"].iloc[-1] if not box_df.empty else None
+
+            # Extract values for 'iterative_prompts_start_point.csv' (single point and ip)
+            if os.path.exists(iterative_start_point_file):
+                point_df = pd.read_csv(iterative_start_point_file)
+                single_point = point_df["mSA"].iloc[0] if not point_df.empty else None
+                ip = point_df["mSA"].iloc[-1] if not point_df.empty else None
+            
+            # Append the result for the current alpha and rank
+            results.append({
+                "dataset": dataset,
+                "modality": f"{modality}_late",
+                "model": model,
+                "ais": ais,
+                "single box": single_box,
+                "single point": single_point,
+                "ib": ib,
+                "ip": ip
+            })
+    return pd.DataFrame(results)
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("../../results/single_img_training.csv")
-    create_barplot(df)
+    # root = "/scratch/usr/nimcarot/sam/experiments/resource_efficient"
+    # df_microscopy = pd.read_csv("../../results/single_img_training_microscopy.csv")
+    # df_medical = pd.read_csv("../../results/single_img_training_medical.csv")
+    # late_results_medical = add_late_data(root, "medical")
+    # late_results_microscopy = add_late_data(root, "microscopy")
 
-    #df = pd.read_csv("../../results/single_img_training_medical.csv")
-    #create_barplot(df, medical=True)
+    # Combine the late results with the main results
+    # df_microscopy = pd.concat([df_microscopy, late_results_microscopy], ignore_index=True)
+    # df_medical = pd.concat([df_medical, late_results_medical], ignore_index=True)
+
+    # df_microscopy.to_csv("../../results/single_img_training_microscopy.csv", index=False)
+    # df_medical.to_csv("../../results/single_img_training_medical.csv")
+
+    df_microscopy = pd.read_csv("../../results/single_img_training_microscopy.csv")
+    df_medical = pd.read_csv("../../results/single_img_training_medical.csv")
+    create_barplot(df_microscopy)
+    create_barplot(df_medical, medical=True)

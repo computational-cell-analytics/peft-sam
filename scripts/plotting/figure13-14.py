@@ -21,69 +21,43 @@ CUSTOM_PALETTE = {
 }
 
 DATASETS = {
-    'psfhs': 'PSFHS',
-    'hpa': 'HPA'
+    "amd_sd": "AMD-SD",
+    "jsrt": "JSRT",
+    "mice_tumseg": "Mice TumSeg",
+    "papila": "Papila",
+    "motum": "MOTUM",
+    "psfhs": "PSFHS",
+    "dsad": "DSAD",
+    "sega": "SEGA",
+    "ircadb": "IRCADb",
+    "covid_if": "Covid-IF",
+    "orgasegment": "OrgaSegment",
+    "gonuclear": "GoNuclear",
+    "hpa": "HPA",
+    "mitolab_glycolytic_muscle": "MitoLab",
+    "platy_cilia": "Platynereis",
 }
 
 DOMAIN = {
+    "amd_sd": "medical",
+    "jsrt": "medical",
+    "mice_tumseg": "medical",
+    "papila": "medical",
+    "motum": "medical",
+    "psfhs": "medical",
+    "dsad": "medical",
+    "sega": "medical",
+    "ircadb": "medical",
+    "covid_if": "microscopy",
+    "orgasegment": "microscopy",
+    "gonuclear": "microscopy",
     "hpa": "microscopy",
-    "psfhs": "medical"
+    "mitolab_glycolytic_muscle": "microscopy",
+    "platy_cilia": "microscopy",
 }
 
 
-def extract_results(experiment_folder):
-
-    result_folders = glob(os.path.join(experiment_folder, '**', 'results'), recursive=True)
-    results = []
-
-    for result_path in result_folders:
-
-        method = result_path.split('/')[-5]
-        update_matrices = result_path.split('/')[-4]
-        start_layer = result_path.split('/')[-3]
-        dataset = result_path.split('/')[-2]
-
-        # Load results
-        iterative_prompting_box = os.path.join(
-            result_path, 'iterative_prompting_without_mask', 'iterative_prompts_start_box.csv'
-        )
-        iterative_prompting_point = os.path.join(
-            result_path, 'iterative_prompting_without_mask', 'iterative_prompts_start_point.csv'
-        )
-        instance_segmentation_file = os.path.join(result_path, 'instance_segmentation_with_decoder.csv')
-
-        ais, single_box, single_point, ib, ip = None, None, None, None, None
-
-        if os.path.exists(iterative_prompting_box):
-            box_df = pd.read_csv(iterative_prompting_box)
-            single_box = box_df["mSA"].iloc[0] if not box_df.empty else None
-            ib = box_df["mSA"].iloc[-1] if not box_df.empty else None
-
-        if os.path.exists(iterative_prompting_point):
-            point_df = pd.read_csv(iterative_prompting_point)
-            single_point = point_df["mSA"].iloc[0] if not point_df.empty else None
-            ip = point_df["mSA"].iloc[-1] if not point_df.empty else None
-
-        if os.path.exists(instance_segmentation_file):
-            instance_df = pd.read_csv(instance_segmentation_file)
-            ais = instance_df["mSA"].iloc[0] if "mSA" in instance_df.columns else None
-
-        results.append({
-            "dataset": dataset,
-            "method": method,
-            "update_matrices": update_matrices,
-            "start_layer": int(start_layer.split('_')[-1]) + 1,
-            "box": single_box,
-            "point": single_point,
-            "ib": ib,
-            "ip": ip,
-            "ais": ais
-        })
-
-    return pd.DataFrame(results)
-
-
-def plot_late_lora(data):
+def plot_late_lora(data, domain="medical"):
     # metrics = ['box', 'point', 'ib', 'ip', 'ais']
     metrics = ['box', 'ais', 'point']
     df_long = pd.melt(
@@ -94,7 +68,7 @@ def plot_late_lora(data):
         value_name="value"
     )
 
-    replace_layer = {'1': '100%', '7': '50%', '10': '25%', '12': '8%', 'freeze encoder': 'Freeze Encoder (0%)'}
+    replace_layer = {0: '100%', 6: '50%', 9: '25%', 11: '8%', 12: 'Freeze Encoder (0%)'}
     df_long['start_layer'] = df_long['start_layer'].replace(replace_layer)
     # Create a new 'group' column based on your rules
 
@@ -116,32 +90,29 @@ def plot_late_lora(data):
     df_plot = df_long.groupby(['dataset', 'start_layer', 'group', 'metric'])['value'].mean().reset_index()
 
     # Set up the plot: one subplot per dataset.
-    datasets = df_plot['dataset'].unique()
+    datasets = [dataset for dataset in DATASETS.keys() if DOMAIN[dataset] == domain]
     n_datasets = len(datasets)
-    fig, axes = plt.subplots(1, n_datasets, figsize=(6 * n_datasets, 6), sharey=False)
+    fig, axes = plt.subplots(n_datasets // 3, 3, figsize=(6 * 3, 6 * n_datasets // 3), sharey=False)
 
-    if n_datasets == 1:
-        axes = [axes]
-
-    metric_list = ['box', 'ais', 'point']
+    metric_list = ['box', 'point', 'ais']
     hatch_dict = {
         'LoRA (Classic)': '///',   # hatched
         'LoRA (All)': 'oo',          # dotted
-        'Full Finetuning': ''    # no pattern
+        'Full Finetuning': '',    # no pattern
     }
 
     # Fixed order for groups (if present)
     groups_order = ['LoRA (All)', 'LoRA (Classic)', 'Full Finetuning']
 
     # Plot each dataset in its own subplot
-    for ax, dataset in zip(axes, datasets):
+    for ax, dataset in zip(axes.flatten(), datasets):
         subset = df_plot[df_plot['dataset'] == dataset]
         # Treat start_layer as categorical by sorting and then assigning an index for even spacing.
         unique_layers = ['100%', '50%', '25%', '8%', 'Freeze Encoder (0%)']
         layer_positions = {layer: i for i, layer in enumerate(unique_layers)}
 
         n_groups = len(groups_order)
-        cluster_width = 0.36  # total width of the cluster
+        cluster_width = 0.35  # total width of the cluster
         offsets = np.linspace(-cluster_width/2, cluster_width/2, n_groups)
 
         for layer in unique_layers:
@@ -150,9 +121,13 @@ def plot_late_lora(data):
                 grp_data = subset[(subset['start_layer'] == layer) & (subset['group'] == grp)]
                 xpos = xpos_base + offsets[i]
                 # Draw overlapping bars for each metric with the method's hatch pattern.
+                metric_vals = {}
                 for metric in metric_list:
                     row = grp_data[grp_data['metric'] == metric]
                     val = row['value'].values[0] if not row.empty else 0
+                    metric_vals[metric] = val
+                
+                for metric, val in sorted(metric_vals.items(), key=lambda item: item[1], reverse=True):
                     ax.bar(xpos, val, width=0.18, color=CUSTOM_PALETTE[metric], alpha=1,
                         hatch=hatch_dict[grp], edgecolor='black')
 
@@ -161,18 +136,16 @@ def plot_late_lora(data):
         ax.set_xticklabels(unique_layers)
         ax.set_title(f'{DATASETS[dataset]}', fontweight='bold', fontsize=15)
         plt.setp(ax.get_xticklabels(), fontstyle='italic')
-        ax.set_xlabel('Late Freezing Percentage')
+        ax.set_xlabel('Percentage of Late Trainable Layers')
         if DOMAIN[dataset] == "microscopy":
             ax.set_ylabel("Mean Segmentation Accuracy", fontsize=12, fontweight='bold')
+            metric_names = {'ais': 'AIS', 'box': 'Box', 'point': 'Point'}
         else:
             ax.set_ylabel('Dice Similarity Coefficient', fontsize=12, fontweight='bold')
-
-        metric_names = {'ais': 'AIS', 'box': 'Box', 'point': 'Point'}
+            metric_names = {'box': 'Box', 'point': 'Point'}
+        
         # Add legend using one patch per metric
-        metric_list = ['ais', 'box', 'point']
-        metric_handles = [Patch(facecolor=CUSTOM_PALETTE[m], label=m, alpha=0.7) for m in metric_list]
-        # metric_names = ['AIS', 'Point', 'Box', r'$I_{\mathbfit{P}}$', r'$I_{\mathbfit{B}}$']
-        metric_names = ['AIS', 'Box', 'Point']
+        metric_handles = [Patch(facecolor=CUSTOM_PALETTE[m], label=metric_names[m], alpha=0.7) for m in metric_names.keys()]
 
     handles = []
     labels = []
@@ -181,23 +154,22 @@ def plot_late_lora(data):
         handles.append(patch)
         labels.append(grp)
     handles = handles + metric_handles
-    labels = labels + metric_names
+    metric_labels = [metric_handle.get_label() for metric_handle in metric_handles]
+    labels = labels + metric_labels
     fig.legend(handles=handles, labels=labels, loc='lower center', ncol=8)
 
     plt.tight_layout()
-    fig.tight_layout(rect=[0.01, 0.05, 0.99, 0.99])  # Adjust space for the legend
+    fig.tight_layout(rect=[0.01, 0.02, 0.99, 0.99])  # Adjust space for the legend
 
-    plt.savefig('../../results/figures/late_lora_results.svg', dpi=300)
+    plt.savefig(f'../../results/figures/figure18_{domain}.png', dpi=300)
+    plt.savefig(f'../../results/figures/figure18_{domain}.pdf')
 
 
 def main():
 
-    #experiment_folder = '/scratch/usr/nimcarot/sam/experiments/peft'
-    #data = extract_results(experiment_folder)
-    #data.to_csv("../../results/late_lora_results.csv", index=False)
-
-    data = pd.read_csv("../../results/late_lora_results.csv")
-    plot_late_lora(data)
+    data = pd.read_csv("../../results/late_lora_all.csv")
+    plot_late_lora(data, domain="medical")
+    plot_late_lora(data, domain="microscopy")
 
 
 if __name__ == '__main__':

@@ -2,15 +2,14 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
+import itertools
 from micro_sam.util import export_custom_qlora_model
 
-# ALL_DATASETS = {
-#    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-#    'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
-    # medical
-
 ALL_DATASETS = {
-    'motum': 'medical_imaging', 'papila': 'medical_imaging', #'jsrt': 'medical_imaging',
+    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+    'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
+    # medical
+    'motum': 'medical_imaging', 'papila': 'medical_imaging', 'jsrt': 'medical_imaging',
     'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
     'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging'
 }
@@ -41,7 +40,9 @@ def write_batch_script(
     proj_size=None,
     dropout=None,
     quantize=False,
-    dry=False
+    attention_layers_to_update=[],
+    update_matrices=[],
+    dry=False,
 ):
     "Writing scripts with different fold-trainings for micro-sam evaluation"
     batch_script = f"""#!/bin/bash
@@ -51,6 +52,8 @@ def write_batch_script(
 #SBATCH -p grete:shared
 #SBATCH -G A100:1
 #SBATCH -A nim00007
+#SBATCH --mail-user=carolin.teuber@stud.uni-goettingen.de
+#SBATCH --mail-type=FAIL
 #SBATCH --job-name={inference_setup}
 
 source ~/.bashrc
@@ -92,6 +95,14 @@ conda activate {env_name} \n"""
         python_script += f"--dropout {dropout} "
     if quantize:
         python_script += "--quantize "
+    if attention_layers_to_update:
+        python_script += "--attention_layers_to_update "
+        for layer in attention_layers_to_update:
+            python_script += f"{layer} "
+    if update_matrices:
+        python_script += "--update_matrices "
+        for layer in update_matrices:
+            python_script += f"{layer} "
 
     # let's add the python script to the bash script
     batch_script += python_script
@@ -161,7 +172,7 @@ def run_peft_evaluations(args, datasets, n_images):
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
             result_path = os.path.join(EXPERIMENT_ROOT, "full_ft", model, f"{n_images}_imgs", dataset)
             if not os.path.exists(result_path):
-                os.makedirs(result_path, exist_ok=False)
+                os.makedirs(result_path, exist_ok=True)
                 for current_setup in SCRIPTS:
                     write_batch_script(
                         env_name="peft-sam-qlora",
@@ -178,7 +189,7 @@ def run_peft_evaluations(args, datasets, n_images):
             assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
             result_path = os.path.join(EXPERIMENT_ROOT, "freeze_encoder", model, f"{n_images}_imgs", dataset)
             if not os.path.exists(result_path):
-                os.makedirs(result_path, exist_ok=False)
+                os.makedirs(result_path, exist_ok=True)
                 for current_setup in SCRIPTS:
                     write_batch_script(
                         env_name="peft-sam-qlora",
@@ -196,16 +207,21 @@ def run_peft_evaluations(args, datasets, n_images):
 
                 # Export custom QLoRA model
                 if peft_method == "qlora":
-                    inference_checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/lora/{n_images}_imgs/{dataset}_sam/for_inference/best.pt"
+                    inference_checkpoint = f"{EXPERIMENT_ROOT}{os.path.split(checkpoint)[0]}/for_inference/best.pt"
                     os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
-                    export_custom_qlora_model(None, checkpoint, model, inference_checkpoint)
+                    export_custom_qlora_model(
+                        checkpoint_path=None,
+                        finetuned_path=checkpoint,
+                        model_type=model,
+                        save_path=inference_checkpoint
+                    )
                     checkpoint = inference_checkpoint
 
                 assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
                 result_path = os.path.join(EXPERIMENT_ROOT, peft_method, model, f"{n_images}_img", dataset)
                 if os.path.exists(result_path):
                     continue
-                os.makedirs(result_path, exist_ok=False)
+                os.makedirs(result_path, exist_ok=True)
 
                 _peft_method = 'lora' if peft_method == 'qlora' else peft_method
                 for current_setup in SCRIPTS:
@@ -221,6 +237,60 @@ def run_peft_evaluations(args, datasets, n_images):
                         **peft_kwargs,
                         dry=args.dry
                     )
+            
+            # add late unfreezing and late lora
+            update_matrices = {'all_matrices': ["q", "k", "v", "mlp"]}
+            attention_layers_to_update = [[6, 7, 8, 9, 10, 11]]
+            peft_methods = ["qlora", "lora", "ClassicalSurgery"]
+
+            for method, layers, update_matrix in itertools.product(peft_methods, attention_layers_to_update, update_matrices.keys()):
+                # if model == "vit_b":
+                #    continue
+                checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/late_lora/{n_images}_imgs/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
+                script_name = get_batch_script_names("./gpu_jobs")
+
+                if method == 'qlora':
+                    _method = 'lora'
+                    quantize = True
+                    env_name = "peft-sam-qlora"
+                    checkpoint = f"{EXPERIMENT_ROOT}/checkpoints/{model}/late_lora/{n_images}_imgs/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
+                    inference_checkpoint = f"{EXPERIMENT_ROOT}/{os.path.split(checkpoint)[0]}/for_inference/best.pt"
+                    os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
+                    export_custom_qlora_model(
+                        checkpoint_path=None,
+                        finetuned_path=checkpoint,
+                        model_type=model,
+                        save_path=inference_checkpoint
+                    )
+                    checkpoint = inference_checkpoint
+                else:
+                    _method = method
+                    quantize = False
+                    env_name = "peft-sam-qlora"
+                
+                assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
+                result_path = os.path.join(EXPERIMENT_ROOT, "late_lora", method, model, f"{n_images}_img", update_matrix, f"start_{layers[0]}", dataset)
+                if os.path.exists(os.path.join(result_path, "results")):
+                    continue
+
+                for current_setup in SCRIPTS:
+                    write_batch_script(
+                        env_name=env_name,
+                        out_path=script_name,
+                        inference_setup=current_setup,
+                        checkpoint=checkpoint,
+                        model_type=model,
+                        experiment_folder=result_path,
+                        dataset=dataset,
+                        peft_method=_method,
+                        peft_rank=32,
+                        attention_layers_to_update=layers,
+                        update_matrices=update_matrices[update_matrix],
+                        quantize=quantize,
+                        dry=args.dry
+                    )
+
+
 
 
 def main(args):
@@ -228,7 +298,7 @@ def main(args):
     if args.single_img:
         run_peft_evaluations(args, ALL_DATASETS, n_images=1)
     elif args.data_scaling:
-        n_images = [2, 5, 10]
+        n_images = [1, 2, 5, 10]
         datasets = {"hpa": "lm", "psfhs": "medical_imaging"}
         for n in n_images:
             run_peft_evaluations(args, datasets, n_images=n)

@@ -128,7 +128,7 @@ def _fetch_microscopy_loaders(
             min_size=5,
         )
 
-        sampler = MinInstanceSampler(min_num_instances=25)
+        sampler = MinInstanceSampler(min_num_instances=5)
 
         train_loader = get_orgasegment_loader(
             path=os.path.join(data_root, "orgasegment"),
@@ -212,8 +212,7 @@ def _fetch_microscopy_loaders(
             val_rois = {1: np.s_[85:, :, :], 2: np.s_[85:, :, :]}
 
         raw_transform = RawTrafo((1, 512, 512))
-        label_transform = ResizeLabelTrafo((512, 512), min_size=3)
-        sampler = MinInstanceSampler(min_num_instances=3)
+        label_transform = ResizeLabelTrafo((512, 512))
 
         train_loader = datasets.get_platynereis_cilia_loader(
             path=os.path.join(data_root, "platynereis"),
@@ -224,7 +223,7 @@ def _fetch_microscopy_loaders(
             download=True,
             num_workers=16,
             shuffle=True,
-            sampler=sampler,
+            sampler=MinInstanceSampler(),
             raw_transform=raw_transform,
             label_transform=label_transform,
             sample_ids=list(train_rois.keys()),
@@ -238,7 +237,7 @@ def _fetch_microscopy_loaders(
             rois=val_rois,
             download=True,
             num_workers=16,
-            sampler=sampler,
+            sampler=MinInstanceSampler(),
             raw_transform=raw_transform,
             label_transform=label_transform,
             sample_ids=list(val_rois.keys()),
@@ -467,7 +466,7 @@ def _fetch_medical_loaders(
 
         def _get_jsrt_loaders(split):
             # Lung and heart segmentation in X-Ray
-            dataset = get_jsrt_loader(
+            dataloader = get_jsrt_loader(
                 path=os.path.join(data_root, "jsrt"),
                 batch_size=batch_size if split == "train" else 1,
                 patch_shape=(512, 512),
@@ -484,6 +483,7 @@ def _fetch_medical_loaders(
                 n_samples=200,
                 sample_range=train_sample_range if split == "train" else val_sample_range
             )
+            dataset = dataloader.dataset
 
             # Get splits on the fly.
             val_fraction = 0.2
@@ -626,8 +626,9 @@ def _fetch_medical_loaders(
         # Get the image and label paths.
         raw_paths, label_paths = [], []
         for i, _organ in enumerate(["liver", "pancreas", "spleen", "colon"]):
-            if train_sample_range[1] - train_sample_range[0] <= i:
-                continue
+            if train_sample_range is not None:
+                if train_sample_range[1] - train_sample_range[0] <= i:
+                    continue
             _rpaths, _lpaths = get_dsad_paths(
                 path=os.path.join(data_root, "dsad"), organ=_organ, download=True,
                 sample_range=train_sample_range

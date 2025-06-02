@@ -2,13 +2,15 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
+import itertools
 
-# ALL_DATASETS = 'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
-#                'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
-ALL_DATASETS = {'motum': 'medical_imaging', 'papila': 'medical_imaging', 'jsrt': 'medical_imaging',
-                'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
-                'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging',
-                }
+ALL_DATASETS = {
+    'covid_if': 'lm', 'orgasegment': 'lm', 'gonuclear': 'lm', 'mitolab_glycolytic_muscle': 'em_organelles',
+    'platy_cilia': 'em_organelles', 'hpa': 'lm', 'livecell': 'lm',
+    'motum': 'medical_imaging', 'papila': 'medical_imaging', 'jsrt': 'medical_imaging',
+    'amd_sd': 'medical_imaging', 'mice_tumseg': 'medical_imaging', 'sega': 'medical_imaging',
+    'ircadb': 'medical_imaging', 'dsad': 'medical_imaging', 'psfhs': 'medical_imaging',
+}
 
 # Dictionary with all peft methods and their peft kwargs
 PEFT_METHODS = {
@@ -34,6 +36,8 @@ def write_batch_script(
     freeze=None,
     quantize=False,
     n_images=1,
+    attention_layers_to_update=[],
+    update_matrices=[],
     dry=False
 ):
     assert model_type in ["vit_t", "vit_b", "vit_t_lm", "vit_b_lm", "vit_b_em_organelles", "vit_b_medical_imaging"]
@@ -47,6 +51,8 @@ def write_batch_script(
 #SBATCH -t 1-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
+#SBATCH --mail-user=carolin.teuber@stud.uni-goettingen.de
+#SBATCH --mail-type=FAIL
 source activate {env_name}
 """
 
@@ -81,13 +87,20 @@ source activate {env_name}
         python_script += f"--freeze {freeze} "
     if quantize:
         python_script += "--quantize "
+    if attention_layers_to_update:
+        python_script += "--attention_layers_to_update "
+        for layer in attention_layers_to_update:
+            python_script += f"{layer} "
+    if update_matrices:
+        python_script += "--update_matrices "
+        for matrix in update_matrices:
+            python_script += f"{matrix} "
 
     medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg', 'sega', 'dsad', 'ircadb']
     if dataset in medical_datasets:
         python_script += "--medical_imaging "
     # let's add the python script to the bash script
     batch_script += python_script
-    print(batch_script)
     with open(script_name, "w") as f:
         f.write(batch_script)
     if not dry:
@@ -175,14 +188,52 @@ def run_peft_finetuning(args, datasets, n_images=1):
                     n_images=n_images,
                     dry=args.dry
                 )
+            # Late LoRA, late QLoRA and late unfreezing
+               
+            update_matrices = {'all_matrices': ["q", "k", "v", "mlp"]}
+            attention_layers_to_update = [[6, 7, 8, 9, 10, 11]]
+            peft_methods = ["qlora", "lora", "ClassicalSurgery"]
+            
+            for method, layers, update_matrix in itertools.product(peft_methods, attention_layers_to_update, update_matrices):
+                checkpoint_name = f"{model}/late_lora/{n_images}_imgs/{method}/{update_matrix}/start_{layers[0]}/{dataset}_sam/"
+                script_name = get_batch_script_names("./gpu_jobs")
 
+                if cpkt_exists(checkpoint_name, args):
+                    continue
+
+                if method == 'qlora':
+                    _method = 'lora'
+                    quantize = True
+                    env_name = "peft-sam-qlora"
+                else:
+                    _method = method
+                    quantize = False
+                    env_name = "peft-sam-qlora"
+
+                write_batch_script(
+                    env_name=env_name,
+                    save_root=args.save_root,
+                    model_type=model,
+                    script_name=script_name,
+                    checkpoint_path=checkpoint_path,
+                    checkpoint_name=checkpoint_name,
+                    dataset=dataset,
+                    peft_method=_method,
+                    peft_rank=32,
+                    attention_layers_to_update=layers,
+                    update_matrices=update_matrices[update_matrix],
+                    n_images=n_images,
+                    quantize=quantize,
+                    dry=args.dry,
+                )
+ 
 
 def main(args):
 
     if args.single_img:
         run_peft_finetuning(args, ALL_DATASETS, n_images=1)
     elif args.data_scaling:
-        n_images = [2, 5, 10]
+        n_images = [1, 2, 5, 10]
         datasets = {"hpa": "lm", "psfhs": "medical_imaging"}
         for n in n_images:
             run_peft_finetuning(args, datasets, n_images=n)

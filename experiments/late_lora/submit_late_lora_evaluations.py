@@ -4,7 +4,10 @@ import subprocess
 import itertools
 from datetime import datetime
 
-DATASETS = {"hpa": "lm", "psfhs": "medical_imaging"}
+from micro_sam.util import export_custom_qlora_model
+
+from submit_late_lora_ft import DATASETS, get_experiment_setting
+
 EXPERIMENT_ROOT = "/scratch/usr/nimcarot/sam/experiments/peft"
 ALL_SCRIPTS = ["evaluate_instance_segmentation", "iterative_prompting"]
 
@@ -21,6 +24,7 @@ def write_batch_script(
     peft_rank=None,
     attention_layers_to_update=[],
     update_matrices=[],
+    quantize=False,
     dry=False,
 ):
     "Writing scripts with different fold-trainings for micro-sam evaluation"
@@ -28,10 +32,12 @@ def write_batch_script(
 #SBATCH -c 16
 #SBATCH --mem 64G
 #SBATCH -p grete:shared
-#SBATCH -t 2-00:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH -G A100:1
 #SBATCH -A nim00007
 #SBATCH --job-name={inference_setup}
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=carolin.teuber@stud.uni-goettingen.de
 
 source ~/.bashrc
 mamba activate {env_name}
@@ -75,6 +81,9 @@ mamba activate {env_name}
         for matrix in update_matrices:
             python_script += f"{matrix} "
 
+    if quantize:
+        python_script += "--quantize "
+
     # let's add the python script to the bash script
     batch_script += python_script
     with open(_op, "w") as f:
@@ -116,65 +125,83 @@ def run_peft_evaluations(args):
     if os.path.exists(tmp_folder):
         shutil.rmtree("./gpu_jobs")
 
-    update_matrices = {'standard': ["q", "v"], 'all_matrices': ["q", "k", "v", "mlp"]}
-    attention_layers_to_update = [[6, 7, 8, 9, 10, 11], [9, 10, 11], [11]]
-    peft_methods = ["lora", "ClassicalSurgery"]
-
+    datasets, peft_methods, attention_layers_to_update, update_matrices = get_experiment_setting(args)
+    print(datasets, peft_methods, attention_layers_to_update, update_matrices)
     experiment_folder = EXPERIMENT_ROOT  # for Caro.
     # experiment_folder = args.experiment_folder  # for Anwai and custom usage.
 
-    for dataset, domain in DATASETS.items():
+    for dataset in datasets:
         if args.dataset is not None and args.dataset != dataset:
             continue
+        domain = DATASETS[dataset]
+        model = f"vit_b_{domain}"
 
         SCRIPTS = ["iterative_prompting"] if domain == "medical_imaging" else ALL_SCRIPTS
 
-        model = f"vit_b_{domain}"
-        checkpoint_path = f"/scratch/usr/nimcarot/sam/models/{model}.pt" if model == "vit_b_lm" else None
-        # run generalist / vanilla
-        result_path = os.path.join(experiment_folder, model, dataset)
-        os.makedirs(result_path, exist_ok=True)
-        for current_setup in SCRIPTS:
-            write_batch_script(
-                env_name="peft-sam-qlora",
-                out_path=get_batch_script_names(tmp_folder),
-                inference_setup=current_setup,
-                checkpoint=checkpoint_path,
-                model_type=model,
-                experiment_folder=result_path,
-                dataset=dataset,
-                dry=args.dry
-            )
+        if not args.best_setting:
+            # freeze encoder
+            checkpoint = f"{experiment_folder}/checkpoints/{model}/late_lora/ClassicalSurgery/standard/start_12/{dataset}_sam/best.pt"
+            if os.path.exists(checkpoint):
+                result_path = os.path.join(experiment_folder, "ClassicalSurgery", "standard", f"start_12", dataset)
+                for current_setup in SCRIPTS:
+                    write_batch_script(
+                            env_name="peft-sam-gpu",
+                            out_path=get_batch_script_names(tmp_folder),
+                            inference_setup=current_setup,
+                            checkpoint=checkpoint,
+                            model_type=model,
+                            experiment_folder=result_path,
+                            dataset=dataset,
+                            dry=args.dry,
+                        )
 
         for method, layers, update_matrix in itertools.product(
             peft_methods, attention_layers_to_update, update_matrices.keys()
-        ):
-            if method == "ClassicalSurgery" and update_matrices[update_matrix] != ["q", "v"]:
-                continue
-
+        ):  
             # late lora and partial freezing
             checkpoint = f"{experiment_folder}/checkpoints/{model}/late_lora/{method}/"
             checkpoint += f"{update_matrix}/start_{layers[0]}/{dataset}_sam/best.pt"
-            if method == "ClassicalSurgery":
+
+            if not os.path.exists(checkpoint):
+                print(f"Checkpoint {checkpoint} does not exist")
                 continue
-
-            assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
             result_path = os.path.join(experiment_folder, method, update_matrix, f"start_{layers[0]}", dataset)
+            if os.path.exists(os.path.join(result_path, "results")):
+                continue
             os.makedirs(result_path, exist_ok=True)
+            scripts = ["iterative_prompting"] if domain == "medical_imaging" else ALL_SCRIPTS
+            if method == 'qlora':
+                _method = 'lora'
+                quantize = True
+                env_name = "peft-sam-qlora"
+                inference_checkpoint = f"{EXPERIMENT_ROOT}/{os.path.split(checkpoint)[0]}/for_inference/best.pt"
+                os.makedirs(os.path.split(inference_checkpoint)[0], exist_ok=True)
+                export_custom_qlora_model(
+                    checkpoint_path=None,
+                    finetuned_path=checkpoint,
+                    model_type=model,
+                    save_path=inference_checkpoint
+                )
+                checkpoint = inference_checkpoint
+            else:
+                _method = method
+                quantize = False
+                env_name = "peft-sam-qlora"
 
-            for current_setup in ALL_SCRIPTS:
+            for current_setup in scripts:
                 write_batch_script(
-                    env_name="peft-sam",
+                    env_name=env_name,
                     out_path=get_batch_script_names(tmp_folder),
                     inference_setup=current_setup,
                     checkpoint=checkpoint,
                     model_type=model,
                     experiment_folder=result_path,
                     dataset=dataset,
-                    peft_method=method,
+                    peft_method=_method,
                     peft_rank=32,
                     attention_layers_to_update=layers,
                     update_matrices=update_matrices[update_matrix],
+                    quantize=quantize,
                     dry=args.dry,
                 )
 
@@ -194,7 +221,15 @@ if __name__ == "__main__":
         "-d", "--dataset", type=str, default=None,
         help="Run the experiments for a specific supported biomedical imaging dataset."
     )
+    parser.add_argument("--best_setting", action="store_true", help="Run the experiment only for the best late lora setting.")	
     parser.add_argument("--dry", action="store_true")
-
+    parser.add_argument(
+        "--qlora_only", action="store_true",
+        help="Run the experiment only for the qlora setting."
+    )
+    parser.add_argument(
+        "--specific", action="store_true",
+        help="Run the experiment only for the specific setting."
+    )
     args = parser.parse_args()
     main(args)
