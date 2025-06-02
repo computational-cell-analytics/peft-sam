@@ -115,7 +115,7 @@ def plot_late_lora(data):
         ax.set_xticklabels(unique_layers)
         ax.set_title(f'{DATASETS[dataset]}', fontweight='bold', fontsize=15)
         plt.setp(ax.get_xticklabels(), fontstyle='italic')
-        ax.set_xlabel('Late Freezing Percentage')
+        ax.set_xlabel('Percentage of Late Trainable Layers')
         if DOMAIN[dataset] == "microscopy":
             ax.set_ylabel("Mean Segmentation Accuracy", fontsize=12, fontweight='bold')
         else:
@@ -141,7 +141,7 @@ def plot_late_lora(data):
     plt.tight_layout()
     fig.tight_layout(rect=[0.01, 0.05, 0.99, 0.99])  # Adjust space for the legend
 
-    plt.savefig('../../results/figures/figure5.svg', dpi=300)
+    plt.savefig('../../results/figures/figure5.pdf', dpi=300)
 
 
 def main():

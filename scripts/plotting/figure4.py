@@ -77,14 +77,12 @@ def create_barplot(df, medical=False):
 
     custom_palette = {
         "ais": "#045275",
-        "point": "#7CCBA2",
-        "box": "#90477F",
-        "ip": "#089099",
-        "ib": "#F0746E",
+        "single point": "#7CCBA2",
+        "single box": "#90477F",
     }
     base_colors = list(custom_palette.values())
     custom_palette = {benchmark: (base_colors[i], mcolors.to_rgba(base_colors[i], alpha=0.5))
-                      for i, benchmark in enumerate(['ais', 'ip', 'ib', 'single box', 'single point'])}
+                      for i, benchmark in enumerate(['ais', 'single point', 'single box'])}
 
     # Metrics to plot
     # metrics = ['ais', 'single point', 'ip', 'single box', 'ib']
@@ -247,18 +245,18 @@ def add_late_data(root, domain):
 
 
 if __name__ == "__main__":
-    root = "/scratch/usr/nimcarot/sam/experiments/resource_efficient"
-    df_microscopy = pd.read_csv("../../results/single_img_training_microscopy.csv")
-    df_medical = pd.read_csv("../../results/single_img_training_medical.csv")
-    late_results_medical = add_late_data(root, "medical")
-    late_results_microscopy = add_late_data(root, "microscopy")
+    # root = "/scratch/usr/nimcarot/sam/experiments/resource_efficient"
+    # df_microscopy = pd.read_csv("../../results/single_img_training_microscopy.csv")
+    # df_medical = pd.read_csv("../../results/single_img_training_medical.csv")
+    # late_results_medical = add_late_data(root, "medical")
+    # late_results_microscopy = add_late_data(root, "microscopy")
 
     # Combine the late results with the main results
-    df_microscopy = pd.concat([df_microscopy, late_results_microscopy], ignore_index=True)
-    df_medical = pd.concat([df_medical, late_results_medical], ignore_index=True)
+    # df_microscopy = pd.concat([df_microscopy, late_results_microscopy], ignore_index=True)
+    # df_medical = pd.concat([df_medical, late_results_medical], ignore_index=True)
 
-    df_microscopy.to_csv("../../results/single_img_training_microscopy.csv", index=False)
-    df_medical.to_csv("../../results/single_img_training_medical.csv")
+    # df_microscopy.to_csv("../../results/single_img_training_microscopy.csv", index=False)
+    # df_medical.to_csv("../../results/single_img_training_medical.csv")
 
     df_microscopy = pd.read_csv("../../results/single_img_training_microscopy.csv")
     df_medical = pd.read_csv("../../results/single_img_training_medical.csv")

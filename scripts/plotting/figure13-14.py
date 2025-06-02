@@ -136,7 +136,7 @@ def plot_late_lora(data, domain="medical"):
         ax.set_xticklabels(unique_layers)
         ax.set_title(f'{DATASETS[dataset]}', fontweight='bold', fontsize=15)
         plt.setp(ax.get_xticklabels(), fontstyle='italic')
-        ax.set_xlabel('Late Freezing Percentage')
+        ax.set_xlabel('Percentage of Late Trainable Layers')
         if DOMAIN[dataset] == "microscopy":
             ax.set_ylabel("Mean Segmentation Accuracy", fontsize=12, fontweight='bold')
             metric_names = {'ais': 'AIS', 'box': 'Box', 'point': 'Point'}

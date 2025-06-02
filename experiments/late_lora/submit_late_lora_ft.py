@@ -94,7 +94,7 @@ mamba activate {env_name}
     if freeze is not None:
         python_script += f"--freeze {freeze} "
     if quantize:
-        python_script += f"--quantize "
+        python_script += "--quantize "
 
     medical_datasets = ['papila', 'motum', 'psfhs', 'jsrt', 'amd_sd', 'mice_tumseg', 'sega', 'dsad', 'ircadb']
     if dataset in medical_datasets:
@@ -138,14 +138,14 @@ def run_late_lora_finetuning(args):
         if args.dataset is not None and dataset != args.dataset:
             continue
         domain = DATASETS[dataset]
-        model = f"vit_b_{domain}"
+        model = f"vit_b"
         if model == "vit_b_lm":
             # make sure to use old sam models for consistency
             checkpoint_path = f"/scratch/usr/nimcarot/sam/models/vit_b_{domain}.pt"
         else:
             checkpoint_path = None
 
-        if not args.specific:
+        if not args.best_setting:
             # freeze encoder
             checkpoint_name = f"{model}/late_lora/ClassicalSurgery/standard/start_12/{dataset}_sam/"
             write_batch_script(

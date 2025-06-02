@@ -179,7 +179,7 @@ def add_late_data(root, domain):
         gen_model = "vit_b_medical_imaging" if domain == "medical" else "vit_b_lm"
         gen_model = "vit_b_em_organelles" if dataset in ["mitolab_glycolytic_muscle", "platy_cilia"] else gen_model
         for model in ["vit_b", gen_model]:
-            result_dir = os.path.join(root, modality, "all_matrices", "start_6", dataset, "results")
+            result_dir = os.path.join(root, model, modality, "all_matrices", "start_6", dataset, "results")
 
             instance_segmentation_file = os.path.join(result_dir, "instance_segmentation_with_decoder.csv")
             iterative_start_box_file = os.path.join(result_dir, "iterative_prompting_without_mask", "iterative_prompts_start_box.csv")
@@ -220,9 +220,9 @@ def add_late_data(root, domain):
 
 
 if __name__ == "__main__":
-    # root = "/scratch/usr/nimcarot/sam/experiments/peft"
-    # late_microscopy = add_late_data(root, "microscopy")
-    # late_medical = add_late_data(root, "medical")
+    #root = "/scratch/usr/nimcarot/sam/experiments/peft"
+    #late_microscopy = add_late_data(root, "microscopy")
+    #late_medical = add_late_data(root, "medical")
 
     # Load the main results
     df_microscopy = pd.read_csv('../../results/main_results_microscopy.csv')
