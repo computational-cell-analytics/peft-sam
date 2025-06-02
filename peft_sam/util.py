@@ -110,6 +110,12 @@ def get_default_peft_kwargs(method: str):
                 attention_layers_to_update=list(range(6, 12)),
                 update_matrices=["q", "k", "v", "mlp"],
             )
+        
+        elif method == "late_ft":
+            peft_kwargs = get_peft_kwargs(
+                peft_module="ClassicalSurgery",
+                attention_layers_to_update=list(range(6, 12)),
+            )
 
         else:
             raise ValueError(f"Please choose a valid peft method from: '{supported_peft_methods}'.")
