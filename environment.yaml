@@ -2,18 +2,8 @@ name: peft-sam
 channels:
     - conda-forge
 dependencies:
-    # This pin is necessary because later nifty versions have import errors on windows.
-    - nifty =1.2.1=*_4
-    - imagecodecs
-    - magicgui
-    - napari >=0.5.0
-    - natsort
-    - pip
-    - pooch
-    - pyqt
-    - python-xxhash
-    - python-elf >=0.4.8
-    # Note: installing the pytorch package from conda-forge will generally
+    - micro_sam
+    # NOTE: installing the pytorch package from conda-forge will generally
     # give you the most optmized version for your system, if you have a modern
     # enough OS and CUDA version (CUDA >= 12). For older versions, you can
     # specify the CUDA version by pinning libtorch.
@@ -21,13 +11,7 @@ dependencies:
     # - libtorch=*=cuda11*
     # or, to enforce a CPU installation, change to
     # - "pytorch=*=cpu*"
-    - pytorch >=2.4
-    - segment-anything
-    - torchvision
-    - torch_em >=0.7.0
-    - tqdm
-    - timm
-    - micro_sam
+    - pytorch >=2.5
     - pip:
         - git+https://github.com/anwai98/tukra.git
         - git+https://github.com/computational-cell-analytics/medico-sam.git
