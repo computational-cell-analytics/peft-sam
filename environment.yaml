@@ -12,6 +12,7 @@ dependencies:
     # or, to enforce a CPU installation, change to
     # - "pytorch=*=cpu*"
     - pytorch >=2.5
+    - torch_em >=0.7.10
     - pip:
         - git+https://github.com/anwai98/tukra.git
         - git+https://github.com/computational-cell-analytics/medico-sam.git
