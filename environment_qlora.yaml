@@ -19,6 +19,6 @@ dependencies:
     - python-xxhash
     - pycocotools
     - imagecodecs
-    - micro_sam
+    - micro_sam >=1.8.1
     - pip:
         - bitsandbytes

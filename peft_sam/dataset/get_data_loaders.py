@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from skimage.measure import label as connected_components
+from bioimage_cpp.segmentation import label as connected_components
 
 import torch
 

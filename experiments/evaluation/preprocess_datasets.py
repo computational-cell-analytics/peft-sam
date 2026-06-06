@@ -3,7 +3,7 @@ from tqdm import tqdm
 
 import random
 import numpy as np
-from skimage.measure import label as connected_components
+from bioimage_cpp.segmentation import label as connected_components
 
 import torch_em
 from torch_em.data import datasets, MinInstanceSampler

@@ -7,13 +7,13 @@ from pathlib import Path
 import h5py
 import numpy as np
 import imageio.v3 as imageio
-from skimage.measure import label as connected_components
+from bioimage_cpp.segmentation import label as connected_components
 
 from torch_em.data import datasets
 from torch_em.transform.generic import ResizeLongestSideInputs
 from torch_em.transform.raw import normalize, normalize_percentile
 
-import nifty.tools as nt
+from bioimage_cpp.utils import Blocking
 
 from elf.wrapper import RoiWrapper
 
@@ -72,8 +72,8 @@ def slices_overlap(slice1, slice2):
 def get_best_crops(raw, labels, desired_shape):
     shape = raw.shape[:2]
     ndim = 2
-    blocking = nt.blocking([0] * ndim, shape, desired_shape)
-    n_blocks = blocking.numberOfBlocks
+    blocking = Blocking([0] * ndim, shape, desired_shape)
+    n_blocks = blocking.number_of_blocks
 
     # Total number of patches that fit into the image
     n_patches = (shape[0] // desired_shape[0]) * (shape[1] // desired_shape[1])
@@ -84,7 +84,7 @@ def get_best_crops(raw, labels, desired_shape):
 
     # get all possible blocks
     for block_id in range(n_blocks):
-        block = blocking.getBlock(block_id)
+        block = blocking.get_block(block_id)
         bb = tuple(slice(beg, end) for beg, end in zip(block.begin, block.end))
         # only allow blocks that have the desired shape
         if raw[bb].shape[:2] == desired_shape:
